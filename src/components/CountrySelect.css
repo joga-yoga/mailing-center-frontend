@@ -1,0 +1,126 @@
+/* Custom country select styles */
+.country-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.country-select-display {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  min-height: 46px;
+}
+
+.country-select-display:hover {
+  border-color: #007bff;
+}
+
+.country-select-display.open {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.country-select-display.error {
+  border-color: #dc3545;
+}
+
+.country-select-display .placeholder {
+  color: #6c757d;
+}
+
+.country-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.country-flag {
+  width: 20px;
+  height: 15px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.country-name {
+  font-size: 14px;
+}
+
+.dropdown-arrow {
+  font-size: 12px;
+  color: #6c757d;
+  transition: transform 0.2s;
+}
+
+.country-select-display.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.country-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+}
+
+.country-dropdown .country-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.country-dropdown .country-option:hover {
+  background-color: #f8f9fa;
+}
+
+.country-search {
+  padding: 8px;
+  border-bottom: 1px solid #e1e5e9;
+  background-color: #f8f9fa;
+}
+
+.country-search-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.country-search-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.country-options {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.country-no-results {
+  padding: 12px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 14px;
+}
