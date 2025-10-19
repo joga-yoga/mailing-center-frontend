@@ -68,6 +68,12 @@
   color: #084298;
 }
 
+.badge-paused {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+
 .badge-completed {
   background-color: #d1e7dd;
   color: #0f5132;

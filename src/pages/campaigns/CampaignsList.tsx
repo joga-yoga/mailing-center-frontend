@@ -6,7 +6,7 @@ import './CampaignsList.css';
 interface CampaignListItem {
   campaign_id: string;
   name: string | null;
-  status: "pending" | "in_progress" | "completed" | "failed";
+  status: "pending" | "in_progress" | "paused" | "completed" | "failed";
   started_at: string | null;
   finished_at: string | null;
   created_at: string | null;
@@ -84,6 +84,7 @@ export const CampaignsListPage: React.FC = () => {
     const statusClasses: Record<string, string> = {
       pending: 'badge-pending',
       in_progress: 'badge-in-progress',
+      paused: 'badge-paused',
       completed: 'badge-completed',
       failed: 'badge-failed',
     };
@@ -91,6 +92,7 @@ export const CampaignsListPage: React.FC = () => {
     const statusLabels: Record<string, string> = {
       pending: 'Pending',
       in_progress: 'In Progress',
+      paused: 'Paused',
       completed: 'Completed',
       failed: 'Failed',
     };

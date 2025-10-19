@@ -12,6 +12,9 @@ export const CampaignStatusPage: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
   const [expandedObjects, setExpandedObjects] = useState<Set<string>>(new Set());
+  const [countdownMs, setCountdownMs] = useState<number | null>(null);
+  const [etaMs, setEtaMs] = useState<number | null>(null);
+  const [mutating, setMutating] = useState<boolean>(false);
 
   const fetchCampaignStatus = async () => {
     if (!campaignId) {
@@ -43,7 +46,7 @@ export const CampaignStatusPage: React.FC = () => {
   }, [campaignId]);
 
   useEffect(() => {
-    if (!autoRefresh || !campaign || campaign.status === 'completed' || campaign.status === 'failed') {
+    if (!autoRefresh || !campaign || (campaign.status !== 'in_progress' && campaign.status !== 'pending')) {
       return;
     }
 
@@ -53,6 +56,64 @@ export const CampaignStatusPage: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [autoRefresh, campaign?.status]);
+
+  // Initialize or update local countdown when response changes
+  useEffect(() => {
+    if (campaign && campaign.next_send_in_seconds !== null && campaign.next_send_in_seconds !== undefined) {
+      const ms = Math.max(0, Math.round(campaign.next_send_in_seconds * 1000));
+      setCountdownMs(ms);
+    } else {
+      setCountdownMs(null);
+    }
+  }, [campaign?.next_send_in_seconds]);
+
+  // Tick the countdown locally every second, independent from polling
+  useEffect(() => {
+    if (countdownMs === null) return;
+    if (countdownMs <= 0) return;
+    const tick = setInterval(() => {
+      setCountdownMs((prev) => {
+        if (prev === null) return prev;
+        const next = prev - 1000;
+        return next > 0 ? next : 0;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [countdownMs]);
+
+  // Initialize or update ETA countdown
+  useEffect(() => {
+    if (campaign && campaign.estimated_seconds_to_finish !== null && campaign.estimated_seconds_to_finish !== undefined) {
+      const ms = Math.max(0, Math.round(campaign.estimated_seconds_to_finish * 1000));
+      setEtaMs(ms);
+    } else {
+      setEtaMs(null);
+    }
+  }, [campaign?.estimated_seconds_to_finish]);
+
+  useEffect(() => {
+    if (etaMs === null) return;
+    if (etaMs <= 0) return;
+    const tick = setInterval(() => {
+      setEtaMs((prev) => {
+        if (prev === null) return prev;
+        const next = prev - 1000;
+        return next > 0 ? next : 0;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [etaMs]);
+
+  const formatHms = (ms: number): string => {
+    const totalSeconds = Math.ceil(ms / 1000); // round up to show user-facing seconds
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const hh = hours.toString().padStart(2, '0');
+    const mm = minutes.toString().padStart(2, '0');
+    const ss = seconds.toString().padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  };
 
   const formatDateTime = (isoString: string | null): string => {
     if (!isoString) return 'N/A';
@@ -71,6 +132,7 @@ export const CampaignStatusPage: React.FC = () => {
     const statusClasses: Record<string, string> = {
       pending: 'badge-pending',
       in_progress: 'badge-in-progress',
+      paused: 'badge-paused',
       completed: 'badge-completed',
       failed: 'badge-failed',
     };
@@ -78,6 +140,7 @@ export const CampaignStatusPage: React.FC = () => {
     const statusLabels: Record<string, string> = {
       pending: 'Pending',
       in_progress: 'In Progress',
+      paused: 'Paused',
       completed: 'Completed',
       failed: 'Failed',
     };
@@ -89,9 +152,10 @@ export const CampaignStatusPage: React.FC = () => {
     );
   };
 
-  const getEmailStatusBadge = (status: string): React.ReactNode => {
+  const getEmailStatusBadge = (status: string | null): React.ReactNode => {
     const statusClasses: Record<string, string> = {
-      pending: 'email-badge-pending',
+      generating: 'email-badge-generating',
+      scheduled: 'email-badge-scheduled',
       sending: 'email-badge-sending',
       sent: 'email-badge-sent',
       failed: 'email-badge-failed',
@@ -100,7 +164,8 @@ export const CampaignStatusPage: React.FC = () => {
     };
 
     const statusLabels: Record<string, string> = {
-      pending: 'Pending',
+      generating: 'Generating',
+      scheduled: 'Scheduled',
       sending: 'Sending',
       sent: 'Sent',
       failed: 'Failed',
@@ -108,9 +173,12 @@ export const CampaignStatusPage: React.FC = () => {
       bounced: 'Bounced',
     };
 
+    const cls = status ? statusClasses[status] || '' : '';
+    const label = status ? (statusLabels[status] || status) : 'N/A';
+
     return (
-      <span className={`email-status-badge ${statusClasses[status] || ''}`}>
-        {statusLabels[status] || status}
+      <span className={`email-status-badge ${cls}`}>
+        {label}
       </span>
     );
   };
@@ -145,6 +213,49 @@ export const CampaignStatusPage: React.FC = () => {
 
   const isCampaignActive = campaign.status === 'pending' || campaign.status === 'in_progress';
 
+  const canPause = campaign.status === 'in_progress';
+  const canResume = campaign.status === 'paused';
+
+  const handlePause = async () => {
+    if (!campaignId) return;
+    try {
+      setMutating(true);
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignPause(campaignId)), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+      await fetchCampaignStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!campaignId) return;
+    try {
+      setMutating(true);
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignResume(campaignId)), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+      await fetchCampaignStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setMutating(false);
+    }
+  };
+
   const toggleObjectExpand = (placeId: string) => {
     setExpandedObjects((prev) => {
       const newSet = new Set(prev);
@@ -164,7 +275,7 @@ export const CampaignStatusPage: React.FC = () => {
           <h1>{campaign.name || 'Untitled'}</h1>
           <p className="campaign-id">ID: {campaign.campaign_id}</p>
         </div>
-        {isCampaignActive && (
+        {isCampaignActive && (campaign.status === 'in_progress' || campaign.status === 'pending') && (
           <div className="header-actions">
             <label className="auto-refresh-toggle">
               <input
@@ -184,18 +295,53 @@ export const CampaignStatusPage: React.FC = () => {
       {/* Basic Status */}
       <div className="info-section">
         <h2>Campaign Status</h2>
-        <div className="status-layout">
-          <div className="info-item">
-            <label>Started:</label>
-            <div>{formatDateTime(campaign.started_at)}</div>
+        <div className={`status-layout columns-3`}>
+          <div className="status-col">
+            <div className="info-item">
+              <label>Started:</label>
+              <div>{formatDateTime(campaign.started_at)}</div>
+            </div>
+            <div className="info-item">
+              <label>Finished:</label>
+              <div>{formatDateTime(campaign.finished_at)}</div>
+            </div>
           </div>
-          <div className="info-item">
-            <label>Finished:</label>
-            <div>{formatDateTime(campaign.finished_at)}</div>
+          <div className="status-col">
+            <div className="info-item">
+              <label>Status:</label>
+              <div>{getStatusBadge(campaign.status)}</div>
+            </div>
+            {(canPause || canResume) && (
+              <div className="info-item">
+                <label>Controls:</label>
+                <div>
+                  {canPause && (
+                    <button className="button button-outline-primary" onClick={handlePause} disabled={mutating}>
+                      {mutating ? 'Pausing...' : 'Pause Campaign'}
+                    </button>
+                  )}
+                  {canResume && (
+                    <button className="button button-outline-primary" onClick={handleResume} disabled={mutating}>
+                      {mutating ? 'Resuming...' : 'Resume Campaign'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="info-item">
-            <label>Status:</label>
-            <div>{getStatusBadge(campaign.status)}</div>
+          <div className="status-col">
+            {campaign.status !== 'paused' && countdownMs !== null && (
+              <div className="info-item">
+                <label>Next Send In:</label>
+                <div>{formatHms(Math.max(0, countdownMs))}</div>
+              </div>
+            )}
+            {campaign.status !== 'paused' && etaMs !== null && (
+              <div className="info-item">
+                <label>ETA to Finish:</label>
+                <div>{formatHms(Math.max(0, etaMs))}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -208,9 +354,9 @@ export const CampaignStatusPage: React.FC = () => {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Place ID</th>
                 <th>Email</th>
                 <th>Status</th>
+                <th>Planned</th>
                 <th>Sent from</th>
                 <th>Sent at</th>
                 <th>Actions</th>
@@ -224,12 +370,21 @@ export const CampaignStatusPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                campaign.objects.map((obj) => (
+                [...campaign.objects]
+                  .sort((a, b) => {
+                    const aTime = a.planned_send_at ? Date.parse(a.planned_send_at) : null;
+                    const bTime = b.planned_send_at ? Date.parse(b.planned_send_at) : null;
+                    if (aTime === null && bTime === null) return 0;
+                    if (aTime === null) return 1; // nulls last
+                    if (bTime === null) return -1;
+                    return bTime - aTime; // descending: latest first
+                  })
+                  .map((obj) => (
                   <tr key={obj.place_id}>
-                    <td>{obj.name || 'N/A'}</td>
-                    <td className="monospace">{obj.place_id}</td>
+                    <td title={obj.place_id || ''}>{obj.name || 'N/A'}</td>
                     <td className="monospace">{obj.email || 'N/A'}</td>
                     <td>{getEmailStatusBadge(obj.email_status)}</td>
+                    <td>{formatDateTime(obj.planned_send_at)}</td>
                     <td className="monospace">{obj.from_email || 'N/A'}</td>
                     <td>{formatDateTime(obj.sent_at)}</td>
                     <td>

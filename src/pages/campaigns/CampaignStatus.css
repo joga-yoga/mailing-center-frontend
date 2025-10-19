@@ -84,6 +84,12 @@
   color: #084298;
 }
 
+.badge-paused {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+
 .badge-completed {
   background-color: #d1e7dd;
   color: #0f5132;
@@ -111,6 +117,16 @@
 .email-badge-sending {
   background-color: #cfe2ff;
   color: #084298;
+}
+
+.email-badge-generating {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.email-badge-scheduled {
+  background-color: #fff3cd;
+  color: #856404;
 }
 
 .email-badge-sent {
@@ -181,7 +197,20 @@
 /* Status Layout */
 .status-layout {
   display: grid;
+  gap: 20px;
+}
+
+.status-layout.columns-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.status-layout.columns-3 {
   grid-template-columns: 1fr 1fr 1fr;
+}
+
+.status-col {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -462,6 +491,17 @@
 .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Outline Primary Button */
+.button-outline-primary {
+  background-color: transparent;
+  color: #0d6efd;
+  border: 2px solid #0d6efd;
+}
+
+.button-outline-primary:hover {
+  background-color: rgba(13, 110, 253, 0.06);
 }
 
 /* Collapsible Details Section */

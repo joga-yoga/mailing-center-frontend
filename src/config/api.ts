@@ -7,6 +7,8 @@ export const API_ENDPOINTS = {
   emailsSetup: '/api/emails/setup',
   campaigns: '/api/campaigns',
   campaignStatus: (campaignId: string) => `/api/campaigns/${campaignId}`,
+  campaignPause: (campaignId: string) => `/api/campaigns/${campaignId}/pause`,
+  campaignResume: (campaignId: string) => `/api/campaigns/${campaignId}/resume`,
 };
 
 // Helper function to build full URL

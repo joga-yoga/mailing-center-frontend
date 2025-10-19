@@ -152,7 +152,6 @@ const COUNTRIES: Country[] = [
   { code: 'TJ', name: 'Tajikistan', flag: '🇹🇯' },
   { code: 'KG', name: 'Kyrgyzstan', flag: '🇰🇬' },
   { code: 'TR', name: 'Turkey', flag: '🇹🇷' },
-  { code: 'MN', name: 'Mongolia', flag: '🇲🇳' },
 ];
 
 export const CountrySelect: React.FC<CountrySelectProps> = ({
@@ -177,15 +176,19 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
       country.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Sort alphabetically
-    filtered.sort((a, b) => a.name.localeCompare(b.name));
+    // De-duplicate by country code in case of accidental duplicates
+    const uniqueByCode = Array.from(new Map(filtered.map(c => [c.code, c])).values());
 
-    setFilteredCountries(filtered);
+    // Sort alphabetically
+    uniqueByCode.sort((a, b) => a.name.localeCompare(b.name));
+
+    setFilteredCountries(uniqueByCode);
   }, [searchTerm]);
 
   // Initialize filtered countries on mount
   useEffect(() => {
-    setFilteredCountries([...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name)));
+    const uniqueAll = Array.from(new Map(COUNTRIES.map(c => [c.code, c])).values());
+    setFilteredCountries(uniqueAll.sort((a, b) => a.name.localeCompare(b.name)));
   }, []);
 
   // Find selected country

@@ -39,9 +39,11 @@ export interface CampaignStatusResponse {
   // Basic Info
   campaign_id: string;
   name: string | null;
-  status: "pending" | "in_progress" | "completed" | "failed";
+  status: "pending" | "in_progress" | "paused" | "completed" | "failed";
   started_at: string | null;  // ISO datetime
   finished_at: string | null;  // ISO datetime
+  next_send_in_seconds: number | null; // seconds until next send (float), nullable
+  estimated_seconds_to_finish: number | null; // seconds to finish whole campaign (float), nullable
   
   // Filters
   country: string | null;
@@ -81,9 +83,11 @@ export interface CampaignStatusResponse {
     name: string | null;
     type: string | null;
     email: string | null;
-    email_status: "pending" | "sending" | "sent" | "failed" | "replied" | "bounced";
+    email_status: "generating" | "scheduled" | "sending" | "sent" | "failed" | "replied" | "bounced" | null;
+    planned_send_at: string | null;  // ISO datetime
     sent_at: string | null;  // ISO datetime
     from_email: string | null;  // Sender email address
     error: string | null;
+    generation_error: string | null;
   }>;
 }
