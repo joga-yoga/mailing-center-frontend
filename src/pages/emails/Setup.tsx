@@ -209,7 +209,8 @@ export const EmailsSetupPage: React.FC = () => {
   };
 
   return (
-    <div className="emails-setup-page narrow-container">
+    <div className="container">
+      <div className="emails-setup-page narrow-container">
       <h1>Email Campaign Setup</h1>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="campaign-form">
@@ -497,6 +498,7 @@ export const EmailsSetupPage: React.FC = () => {
           {isSubmitting ? 'Creating Campaign...' : 'Create Campaign'}
         </button>
       </form>
+      </div>
     </div>
   );
 };

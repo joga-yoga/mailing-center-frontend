@@ -1,8 +1,7 @@
 .campaign-status-page {
   width: 100%;
-  padding: 0;
+  padding: 20px 60px;
   max-width: 1800px;
-  margin: 0 auto;
 }
 
 .campaign-header {
@@ -259,6 +258,11 @@
 .stat-card.stat-replied {
   background: #fff3cd;
   border-color: #856404;
+}
+
+.stat-card.stat-bounced {
+  background: #f8d7da;
+  border-color: #dc3545;
 }
 
 .stat-value {

@@ -7,6 +7,9 @@ export const API_ENDPOINTS = {
   emailsSetup: '/api/emails/setup',
   campaigns: '/api/campaigns',
   campaignStatus: (campaignId: string) => `/api/campaigns/${campaignId}`,
+  campaignObjectDetails: (campaignId: string, objectId: string) => `/api/campaigns/${campaignId}/objects/${objectId}`,
+  emailThread: (campaignId: string, threadId: string) => `/api/campaigns/${campaignId}/threads/${threadId}`,
+  sendReply: (campaignId: string, objectId: string) => `/api/campaigns/${campaignId}/objects/${objectId}/reply`,
   campaignPause: (campaignId: string) => `/api/campaigns/${campaignId}/pause`,
   campaignResume: (campaignId: string) => `/api/campaigns/${campaignId}/resume`,
 };

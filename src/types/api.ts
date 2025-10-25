@@ -75,6 +75,7 @@ export interface CampaignStatusResponse {
     sent: number;      // Successfully sent
     failed: number;    // Failed to send
     replied: number;   // Received replies
+    bounced: number;   // Bounced emails
   };
   
   // Objects list

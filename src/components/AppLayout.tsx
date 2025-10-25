@@ -31,9 +31,7 @@ export const AppLayout: React.FC = () => {
         </div>
       </header>
       <main className="app-main">
-        <div className="container">
-          <Outlet />
-        </div>
+        <Outlet />
       </main>
     </div>
   );

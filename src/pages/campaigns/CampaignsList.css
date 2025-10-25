@@ -1,5 +1,5 @@
 .campaigns-list-page {
-  /* Padding контролюється через .container в AppLayout */
+  padding: 20px 60px;
 }
 
 .page-header {

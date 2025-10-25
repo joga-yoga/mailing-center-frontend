@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CampaignStatusResponse } from '../../types/api';
 import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 import './CampaignStatus.css';
 
 export const CampaignStatusPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState<CampaignStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -46,7 +47,7 @@ export const CampaignStatusPage: React.FC = () => {
   }, [campaignId]);
 
   useEffect(() => {
-    if (!autoRefresh || !campaign || (campaign.status !== 'in_progress' && campaign.status !== 'pending')) {
+    if (!autoRefresh || !campaign) {
       return;
     }
 
@@ -81,7 +82,7 @@ export const CampaignStatusPage: React.FC = () => {
     return () => clearInterval(tick);
   }, [countdownMs]);
 
-  // Initialize or update ETA countdown
+  // Initialize or update time to last send countdown
   useEffect(() => {
     if (campaign && campaign.estimated_seconds_to_finish !== null && campaign.estimated_seconds_to_finish !== undefined) {
       const ms = Math.max(0, Math.round(campaign.estimated_seconds_to_finish * 1000));
@@ -275,21 +276,19 @@ export const CampaignStatusPage: React.FC = () => {
           <h1>{campaign.name || 'Untitled'}</h1>
           <p className="campaign-id">ID: {campaign.campaign_id}</p>
         </div>
-        {isCampaignActive && (campaign.status === 'in_progress' || campaign.status === 'pending') && (
-          <div className="header-actions">
-            <label className="auto-refresh-toggle">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-              />
-              Auto-refresh
-            </label>
-            <button className="button button-secondary" onClick={fetchCampaignStatus}>
-              Refresh
-            </button>
-          </div>
-        )}
+        <div className="header-actions">
+          <label className="auto-refresh-toggle">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+            />
+            Auto-refresh
+          </label>
+          <button className="button button-secondary" onClick={fetchCampaignStatus}>
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Basic Status */}
@@ -330,7 +329,7 @@ export const CampaignStatusPage: React.FC = () => {
             )}
           </div>
           <div className="status-col">
-            {campaign.status !== 'paused' && countdownMs !== null && (
+            {campaign.status !== 'paused' && countdownMs !== null && countdownMs > 0 && (
               <div className="info-item">
                 <label>Next Send In:</label>
                 <div>{formatHms(Math.max(0, countdownMs))}</div>
@@ -338,7 +337,7 @@ export const CampaignStatusPage: React.FC = () => {
             )}
             {campaign.status !== 'paused' && etaMs !== null && (
               <div className="info-item">
-                <label>ETA to Finish:</label>
+                <label>ETA to finish:</label>
                 <div>{formatHms(Math.max(0, etaMs))}</div>
               </div>
             )}
@@ -388,7 +387,10 @@ export const CampaignStatusPage: React.FC = () => {
                     <td className="monospace">{obj.from_email || 'N/A'}</td>
                     <td>{formatDateTime(obj.sent_at)}</td>
                     <td>
-                      <button className="button-small show-more-btn">
+                      <button 
+                        className="button-small show-more-btn"
+                        onClick={() => navigate(`/campaigns/${campaignId}/objects/${obj.place_id}`)}
+                      >
                         Show more
                       </button>
                     </td>
@@ -420,13 +422,17 @@ export const CampaignStatusPage: React.FC = () => {
             <div className={`stat-value ${campaign.statistics.replied === 0 ? 'stat-zero' : ''}`}>{campaign.statistics.replied}</div>
             <div className="stat-label">Replied</div>
           </div>
+          <div className="stat-card stat-bounced">
+            <div className={`stat-value ${campaign.statistics.bounced === 0 ? 'stat-zero' : ''}`}>{campaign.statistics.bounced}</div>
+            <div className="stat-label">Bounced</div>
+          </div>
         </div>
         {campaign.statistics.total > 0 && (
           <div className="progress-bar">
             <div
               className="progress-fill"
               style={{
-                width: `${(campaign.statistics.sent / campaign.statistics.total) * 100}%`,
+                width: `${((campaign.statistics.sent + campaign.statistics.failed + campaign.statistics.replied + campaign.statistics.bounced) / campaign.statistics.total) * 100}%`,
               }}
             />
           </div>
