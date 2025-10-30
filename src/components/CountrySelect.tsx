@@ -191,10 +191,10 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
     setFilteredCountries(uniqueAll.sort((a, b) => a.name.localeCompare(b.name)));
   }, []);
 
-  // Find selected country
+  // Find selected country (by name or code for backward compatibility)
   useEffect(() => {
     if (value) {
-      const country = COUNTRIES.find(c => c.code === value);
+      const country = COUNTRIES.find(c => c.name === value || c.code === value);
       setSelectedCountry(country || null);
     } else {
       setSelectedCountry(null);
@@ -214,7 +214,8 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   }, []);
 
   const handleSelect = (country: Country) => {
-    onChange({ target: { name, value: country.code } } as React.ChangeEvent<HTMLSelectElement>);
+    // Send full country name instead of code for database filtering
+    onChange({ target: { name, value: country.name } } as React.ChangeEvent<HTMLSelectElement>);
     setIsOpen(false);
     setSearchTerm('');
   };
