@@ -16,11 +16,23 @@ interface ThreadMessage {
   message_id: string | null;
 }
 
+interface PendingReply {
+  id: string;
+  type: 'pending_reply';
+  from_email: string;
+  to_email: string;
+  subject: string;
+  body: string;
+  scheduled_at: string;
+  created_at: string;
+}
+
 interface EmailThread {
   thread_id: string;
   campaign_id: string;
   participants: string[];
   messages: ThreadMessage[];
+  pending_replies?: PendingReply[];
 }
 
 interface CampaignObjectDetailsResponse {
@@ -405,41 +417,74 @@ export const CampaignObjectDetailsPage: React.FC = () => {
               <h2>Email Conversation</h2>
               
               {thread && thread.messages.length > 0 ? (
-                // Показати всі повідомлення з thread
-                thread.messages.map((message, index) => (
-                  <div 
-                    key={message.id} 
-                    className={`email-message ${message.type === 'sent' ? 'sent-email' : 'reply-email'}`}
-                  >
-                    <div className="email-message-header">
-                      <div className="email-sender">
-                        <strong>{message.from_email}</strong>
-                        <span className="email-time">{formatDateTime(message.created_at)}</span>
+                <>
+                  {/* Показати всі повідомлення з thread */}
+                  {thread.messages.map((message, index) => (
+                    <div 
+                      key={message.id} 
+                      className={`email-message ${message.type === 'sent' ? 'sent-email' : 'reply-email'}`}
+                    >
+                      <div className="email-message-header">
+                        <div className="email-sender">
+                          <strong>{message.from_email}</strong>
+                          <span className="email-time">{formatDateTime(message.created_at)}</span>
+                        </div>
+                        <div className="email-message-header-right">
+                          {message.type === 'sent' && data.sent_email?.id.startsWith('generated_') && data.target.status !== 'sent' && (
+                            <div className="email-status-badge email-generated">
+                              Generated (Not Sent)
+                            </div>
+                          )}
+                          <span className="email-message-id">#{message.id.slice(-8)}</span>
+                        </div>
                       </div>
-                      <div className="email-message-header-right">
-                        {message.type === 'sent' && data.sent_email?.id.startsWith('generated_') && data.target.status !== 'sent' && (
-                          <div className="email-status-badge email-generated">
-                            Generated (Not Sent)
+                      <div className="email-message-content">
+                        <div className="email-subject">
+                          <strong>Subject:</strong> {message.subject}
+                        </div>
+                        <div className="email-body">
+                          <pre>{message.body}</pre>
+                        </div>
+                      </div>
+                      {message.type === 'sent' && data.sent_email?.error && (
+                        <div className="email-error">
+                          <strong>Error:</strong> {data.sent_email.error}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Показати pending replies */}
+                  {thread.pending_replies && thread.pending_replies.length > 0 && thread.pending_replies.map((pending) => (
+                    <div 
+                      key={pending.id} 
+                      className="email-message pending-reply"
+                    >
+                      <div className="email-message-header">
+                        <div className="email-sender">
+                          <strong>{pending.from_email}</strong>
+                          <span className="email-time">
+                            Will send at: {formatDateTime(pending.scheduled_at)}
+                          </span>
+                        </div>
+                        <div className="email-message-header-right">
+                          <div className="email-status-badge email-pending">
+                            Auto-Reply Scheduled
                           </div>
-                        )}
-                        <span className="email-message-id">#{message.id.slice(-8)}</span>
+                          <span className="email-message-id">#{pending.id.slice(-8)}</span>
+                        </div>
+                      </div>
+                      <div className="email-message-content">
+                        <div className="email-subject">
+                          <strong>Subject:</strong> {pending.subject}
+                        </div>
+                        <div className="email-body">
+                          <pre>{pending.body}</pre>
+                        </div>
                       </div>
                     </div>
-                    <div className="email-message-content">
-                      <div className="email-subject">
-                        <strong>Subject:</strong> {message.subject}
-                      </div>
-                      <div className="email-body">
-                        <pre>{message.body}</pre>
-                      </div>
-                    </div>
-                    {message.type === 'sent' && data.sent_email?.error && (
-                      <div className="email-error">
-                        <strong>Error:</strong> {data.sent_email.error}
-                      </div>
-                    )}
-                  </div>
-                ))
+                  ))}
+                </>
               ) : data.sent_email ? (
                 // Fallback: показати тільки відправлений лист якщо thread не завантажився
                 <div className="email-message sent-email">

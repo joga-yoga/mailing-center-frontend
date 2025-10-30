@@ -164,6 +164,13 @@
   margin-left: 40px;
 }
 
+.email-message.pending-reply {
+  background: #e7f3ff;
+  border-left: 4px solid #2196F3;
+  margin-left: 40px;
+  opacity: 0.9;
+}
+
 .email-message.no-email {
   background: #f8d7da;
   border-left: 4px solid #dc3545;
@@ -221,6 +228,12 @@
   background: #fff3cd;
   color: #856404;
   border: 1px solid #ffeaa7;
+}
+
+.email-status-badge.email-pending {
+  background: #e7f3ff;
+  color: #1565c0;
+  border: 1px solid #90caf9;
 }
 
 

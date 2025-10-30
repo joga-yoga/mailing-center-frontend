@@ -158,6 +158,13 @@ export const EmailsSetupPage: React.FC = () => {
     try {
       const data = watch();
 
+      // Ensure use_corporate is included in form data
+      data.use_corporate = useCorporate;
+      
+      // Ensure auto_answering and parsing are included in form data
+      data.auto_answering = autoAnswering;
+      data.parsing = parsing;
+
       // Convert emails from string to array
       if (typeof data.emails === 'string') {
         data.emails = parseEmails(data.emails);
@@ -178,6 +185,14 @@ export const EmailsSetupPage: React.FC = () => {
         setIsSubmitting(false);
         return;
       }
+
+      // Debug logging
+      console.log('Sending campaign data:', {
+        ...data,
+        auto_answering: data.auto_answering,
+        parsing: data.parsing,
+        use_corporate: data.use_corporate
+      });
 
       const response = await fetch(buildApiUrl(API_ENDPOINTS.emailsSetup), {
         method: 'POST',
@@ -321,8 +336,10 @@ export const EmailsSetupPage: React.FC = () => {
             name="parsing"
             checked={parsing}
             onChange={(e) => {
-              setParsing(e.target.checked);
-              if (!e.target.checked) {
+              const checked = e.target.checked;
+              setParsing(checked);
+              setValue('parsing', checked);
+              if (!checked) {
                 setValue('parsing_prompt', '');
               }
             }}
@@ -351,8 +368,10 @@ export const EmailsSetupPage: React.FC = () => {
             name="auto_answering"
             checked={autoAnswering}
             onChange={(e) => {
-              setAutoAnswering(e.target.checked);
-              if (!e.target.checked) {
+              const checked = e.target.checked;
+              setAutoAnswering(checked);
+              setValue('auto_answering', checked);
+              if (!checked) {
                 setValue('reply_prompt', '');
               }
             }}
@@ -422,7 +441,11 @@ export const EmailsSetupPage: React.FC = () => {
             label="Use Corporate Domain"
             name="use_corporate"
             checked={useCorporate}
-            onChange={(e) => setUseCorporate(e.target.checked)}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setUseCorporate(checked);
+              setValue('use_corporate', checked);
+            }}
           />
 
           <div style={{ display: 'flex', gap: '16px' }}>
