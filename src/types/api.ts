@@ -84,7 +84,7 @@ export interface CampaignStatusResponse {
     name: string | null;
     type: string | null;
     email: string | null;
-    email_status: "generating" | "scheduled" | "sending" | "sent" | "failed" | "replied" | "bounced" | null;
+    email_status: "queued" | "enriching" | "generated" | "scheduled" | "sending" | "sent" | "failed" | "replied" | "bounced" | null;
     planned_send_at: string | null;  // ISO datetime
     sent_at: string | null;  // ISO datetime
     from_email: string | null;  // Sender email address

@@ -113,14 +113,24 @@
   color: #666;
 }
 
+.email-badge-queued {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
 .email-badge-sending {
   background-color: #cfe2ff;
   color: #084298;
 }
 
-.email-badge-generating {
-  background-color: #e0e7ff;
-  color: #3730a3;
+.email-badge-enriching {
+  background-color: #ddd6fe;
+  color: #5b21b6;
+}
+
+.email-badge-generated {
+  background-color: #cffafe;
+  color: #164e63;
 }
 
 .email-badge-scheduled {

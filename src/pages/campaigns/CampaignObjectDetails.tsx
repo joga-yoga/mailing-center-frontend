@@ -341,77 +341,6 @@ export const CampaignObjectDetailsPage: React.FC = () => {
 
       {/* Main Content - Email Thread */}
       <div className="campaign-object-main-content">
-        {/* Overview Info */}
-        <div className="campaign-object-overview">
-          <div className="campaign-object-info-grid">
-            <div className="campaign-object-info-card">
-              <h3>Target Information</h3>
-              <div className="campaign-object-info-item">
-                <label>Email:</label>
-                <span>{data.target.to_email}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Status:</label>
-                {getStatusBadge(data.target.status)}
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Attempts:</label>
-                <span>{data.target.attempts}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Planned Send:</label>
-                <span>{formatDateTime(data.target.planned_send_at)}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Sent At:</label>
-                <span>{formatDateTime(data.target.sent_at)}</span>
-              </div>
-            </div>
-
-            <div className="campaign-object-info-card">
-              <h3>Campaign Settings</h3>
-              <div className="campaign-object-info-item">
-                <label>Country:</label>
-                <span>{data.campaign.country || 'N/A'}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Object Type:</label>
-                <span>{data.campaign.object_type || 'N/A'}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Language:</label>
-                <span>{data.campaign.language}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Style:</label>
-                <span>{data.campaign.style || 'N/A'}</span>
-              </div>
-              <div className="campaign-object-info-item">
-                <label>Tone:</label>
-                <span>{data.campaign.tov || 'N/A'}</span>
-              </div>
-            </div>
-
-            {data.target.last_error && (
-              <div className="campaign-object-info-card error-card">
-                <h3>Last Error</h3>
-                <div className="error-content">
-                  <pre>{data.target.last_error}</pre>
-                </div>
-              </div>
-            )}
-
-            {data.target.generation_error && (
-              <div className="campaign-object-info-card error-card">
-                <h3>Generation Error</h3>
-                <div className="error-content">
-                  <pre>{data.target.generation_error}</pre>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Email Thread */}
         <div className="campaign-object-email-thread">
               <h2>Email Conversation</h2>
@@ -557,6 +486,77 @@ export const CampaignObjectDetailsPage: React.FC = () => {
                 </button>
               </form>
             </div>
+
+        {/* Overview Info */}
+        <div className="campaign-object-overview">
+          <div className="campaign-object-info-grid">
+            <div className="campaign-object-info-card">
+              <h3>Target Information</h3>
+              <div className="campaign-object-info-item">
+                <label>Email:</label>
+                <span>{data.target.to_email}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Status:</label>
+                {getStatusBadge(data.target.status)}
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Attempts:</label>
+                <span>{data.target.attempts}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Planned Send:</label>
+                <span>{formatDateTime(data.target.planned_send_at)}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Sent At:</label>
+                <span>{formatDateTime(data.target.sent_at)}</span>
+              </div>
+            </div>
+
+            <div className="campaign-object-info-card">
+              <h3>Campaign Settings</h3>
+              <div className="campaign-object-info-item">
+                <label>Country:</label>
+                <span>{data.campaign.country || 'N/A'}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Object Type:</label>
+                <span>{data.campaign.object_type || 'N/A'}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Language:</label>
+                <span>{data.campaign.language}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Style:</label>
+                <span>{data.campaign.style || 'N/A'}</span>
+              </div>
+              <div className="campaign-object-info-item">
+                <label>Tone:</label>
+                <span>{data.campaign.tov || 'N/A'}</span>
+              </div>
+            </div>
+
+            {data.target.last_error && (
+              <div className="campaign-object-info-card error-card">
+                <h3>Last Error</h3>
+                <div className="error-content">
+                  <pre>{data.target.last_error}</pre>
+                </div>
+              </div>
+            )}
+
+            {data.target.generation_error && (
+              <div className="campaign-object-info-card error-card">
+                <h3>Generation Error</h3>
+                <div className="error-content">
+                  <pre>{data.target.generation_error}</pre>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
           {/* B2B Object Info */}
           {data.b2b_object && (

@@ -155,7 +155,9 @@ export const CampaignStatusPage: React.FC = () => {
 
   const getEmailStatusBadge = (status: string | null): React.ReactNode => {
     const statusClasses: Record<string, string> = {
-      generating: 'email-badge-generating',
+      queued: 'email-badge-queued',
+      enriching: 'email-badge-enriching',
+      generated: 'email-badge-generated',
       scheduled: 'email-badge-scheduled',
       sending: 'email-badge-sending',
       sent: 'email-badge-sent',
@@ -165,7 +167,9 @@ export const CampaignStatusPage: React.FC = () => {
     };
 
     const statusLabels: Record<string, string> = {
-      generating: 'Generating',
+      queued: 'Queued',
+      enriching: 'Enriching',
+      generated: 'Generated',
       scheduled: 'Scheduled',
       sending: 'Sending',
       sent: 'Sent',
