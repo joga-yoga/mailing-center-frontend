@@ -52,6 +52,24 @@
   background-color: #e7f3ff;
 }
 
+.nav-button {
+  background: none;
+  border: none;
+  color: #666;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.nav-button:hover {
+  color: #007bff;
+  background-color: #f8f9fa;
+}
+
 .app-main {
   padding: 24px 0;
 }

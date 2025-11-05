@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { B2BImportModal } from './B2BImportModal';
 import './AppLayout.css';
 
 export const AppLayout: React.FC = () => {
   const location = useLocation();
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   return (
     <div className="app-layout">
@@ -26,6 +28,12 @@ export const AppLayout: React.FC = () => {
               >
                 Campaigns
               </Link>
+              <button
+                className="nav-link nav-button"
+                onClick={() => setIsImportModalOpen(true)}
+              >
+                Import B2B
+              </button>
             </div>
           </nav>
         </div>
@@ -33,6 +41,10 @@ export const AppLayout: React.FC = () => {
       <main className="app-main">
         <Outlet />
       </main>
+      <B2BImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 };

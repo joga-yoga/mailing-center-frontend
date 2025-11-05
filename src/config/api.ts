@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
   campaignPause: (campaignId: string) => `/api/campaigns/${campaignId}/pause`,
   campaignResume: (campaignId: string) => `/api/campaigns/${campaignId}/resume`,
   b2bStats: '/api/b2b/stats/',
+  b2bImport: '/api/b2b/import',
 };
 
 // Helper function to build full URL
