@@ -1,4 +1,6 @@
 export interface CampaignSetupRequest {
+  name?: string;
+  sender_account_ids?: string[];
   // Режим одержувачів (взаємовиключний вибір)
   emails?: string[]; // Варіант 1: список email
   country?: string; // Варіант 2: фільтри БД

@@ -6,6 +6,7 @@ import { EmailsSetupPage } from './pages/emails/Setup';
 import { CampaignsListPage } from './pages/campaigns/CampaignsList';
 import { CampaignStatusPage } from './pages/campaigns/CampaignStatus';
 import { CampaignObjectDetailsPage } from './pages/campaigns/CampaignObjectDetails';
+import { SenderAccountsPage } from './pages/senders/SenderAccounts';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="campaigns" element={<CampaignsListPage />} />
           <Route path="campaigns/:campaignId" element={<CampaignStatusPage />} />
           <Route path="campaigns/:campaignId/objects/:objectId" element={<CampaignObjectDetailsPage />} />
+          <Route path="senders" element={<SenderAccountsPage />} />
         </Route>
       </Routes>
     </Router>

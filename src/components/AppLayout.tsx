@@ -28,6 +28,12 @@ export const AppLayout: React.FC = () => {
               >
                 Campaigns
               </Link>
+              <Link
+                to="/senders"
+                className={`nav-link ${location.pathname.startsWith('/senders') ? 'active' : ''}`}
+              >
+                Senders
+              </Link>
               <button
                 className="nav-link nav-button"
                 onClick={() => setIsImportModalOpen(true)}

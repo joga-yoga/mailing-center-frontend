@@ -10,6 +10,15 @@ import { WritingStyleSelect } from '../../components/WritingStyleSelect';
 import { CampaignSetupRequest, CampaignSetupResponse } from '../../types/api';
 import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 
+type SenderAccountOption = {
+  id: string;
+  email: string;
+  server_id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  is_active: boolean;
+};
+
 export const EmailsSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const [recipientMode, setRecipientMode] = useState<'emails' | 'filters'>('emails');
@@ -20,6 +29,13 @@ export const EmailsSetupPage: React.FC = () => {
   const [submitResult, setSubmitResult] = useState<CampaignSetupResponse | null>(null);
   const [submitError, setSubmitError] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [matchingCount, setMatchingCount] = useState<number | null>(null);
+  const [matchingCountLoading, setMatchingCountLoading] = useState(false);
+  const [matchingCountError, setMatchingCountError] = useState<string>('');
+  const [senderAccounts, setSenderAccounts] = useState<SenderAccountOption[]>([]);
+  const [senderAccountsLoading, setSenderAccountsLoading] = useState(false);
+  const [senderAccountsError, setSenderAccountsError] = useState<string>('');
+  const [selectedSenderIds, setSelectedSenderIds] = useState<string[]>([]);
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, setError, clearErrors } = useForm<CampaignSetupRequest>({});
 
@@ -28,6 +44,37 @@ export const EmailsSetupPage: React.FC = () => {
   const watchedObjectType = watch('object_type');
   const watchedParsingPrompt = watch('parsing_prompt');
   const watchedReplyPrompt = watch('reply_prompt');
+  React.useEffect(() => {
+    const fetchSenderAccounts = async () => {
+      setSenderAccountsLoading(true);
+      setSenderAccountsError('');
+      try {
+        const response = await fetch(
+          buildApiUrl(`${API_ENDPOINTS.senderAccounts}?active_only=true`)
+        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
+        }
+        const data: SenderAccountOption[] = await response.json();
+        setSenderAccounts(data);
+      } catch (err) {
+        setSenderAccountsError(err instanceof Error ? err.message : 'Failed to load sender accounts');
+      } finally {
+        setSenderAccountsLoading(false);
+      }
+    };
+
+    fetchSenderAccounts();
+  }, []);
+
+  React.useEffect(() => {
+    if (!senderAccounts.length) {
+      setSelectedSenderIds([]);
+      return;
+    }
+    syncSelectionWithServerType(useCorporate, senderAccounts);
+  }, [useCorporate, senderAccounts]);
 
   // Валідація взаємовиключення режимів одержувачів
   React.useEffect(() => {
@@ -57,6 +104,68 @@ export const EmailsSetupPage: React.FC = () => {
       clearErrors('reply_prompt');
     }
   }, [autoAnswering, watchedReplyPrompt, setError, clearErrors]);
+
+  React.useEffect(() => {
+    if (recipientMode !== 'filters' || !watchedCountry || !watchedObjectType) {
+      setMatchingCount(null);
+      setMatchingCountError('');
+      setMatchingCountLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setMatchingCountLoading(true);
+    setMatchingCountError('');
+
+    const fetchCount = async () => {
+      try {
+        const response = await fetch(
+          buildApiUrl(API_ENDPOINTS.b2bCount(watchedCountry, watchedObjectType))
+        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          setMatchingCount(typeof data.count === 'number' ? data.count : 0);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setMatchingCount(null);
+          setMatchingCountError(err instanceof Error ? err.message : 'Failed to load count');
+        }
+      } finally {
+        if (!cancelled) {
+          setMatchingCountLoading(false);
+        }
+      }
+    };
+
+    fetchCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [recipientMode, watchedCountry, watchedObjectType]);
+
+  function syncSelectionWithServerType(useCorporateValue: boolean, accounts: SenderAccountOption[]) {
+    const serverId = useCorporateValue ? '2' : '1';
+    const filtered = accounts.filter((acc) => acc.server_id === serverId);
+    setSelectedSenderIds(filtered.map((acc) => acc.id));
+  }
+
+  const handleSenderSelectionChange = (accountId: string, checked: boolean) => {
+    setSelectedSenderIds((prev) => {
+      if (checked) {
+        if (prev.includes(accountId)) {
+          return prev;
+        }
+        return [...prev, accountId];
+      }
+      return prev.filter((id) => id !== accountId);
+    });
+  };
 
   const handleRecipientModeChange = (mode: 'emails' | 'filters') => {
     setRecipientMode(mode);
@@ -101,6 +210,16 @@ export const EmailsSetupPage: React.FC = () => {
     if (recipientMode === 'filters' && (!data.country || !data.object_type)) {
       isValid = false;
       validationErrors.push('Country and object type are required');
+    }
+
+    const currentServerId = useCorporate ? '2' : '1';
+    const relevantAccounts = senderAccounts.filter((acc) => acc.server_id === currentServerId);
+    if (relevantAccounts.length === 0) {
+      validationErrors.push(`No ${useCorporate ? 'corporate' : 'personal'} sender accounts available`);
+      isValid = false;
+    } else if (selectedSenderIds.length === 0) {
+      isValid = false;
+      validationErrors.push('Select at least one sender account');
     }
 
     // Check required prompts
@@ -186,6 +305,22 @@ export const EmailsSetupPage: React.FC = () => {
         return;
       }
 
+      const currentServerId = useCorporate ? '2' : '1';
+      const relevantAccounts = senderAccounts.filter((acc) => acc.server_id === currentServerId);
+      if (relevantAccounts.length === 0) {
+        setSubmitError(`No ${useCorporate ? 'corporate' : 'personal'} sender accounts available`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!selectedSenderIds.length) {
+        setSubmitError('Select at least one sender account');
+        setIsSubmitting(false);
+        return;
+      }
+
+      data.sender_account_ids = selectedSenderIds;
+
       // Debug logging
       console.log('Sending campaign data:', {
         ...data,
@@ -229,6 +364,20 @@ export const EmailsSetupPage: React.FC = () => {
       <h1>Email Campaign Setup</h1>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="campaign-form">
+        <div className="form-section">
+          <h3>Campaign Details</h3>
+          <div className="form-group">
+            <label htmlFor="campaign-name">Campaign Name</label>
+            <input
+              id="campaign-name"
+              type="text"
+              className="form-control"
+              placeholder="Enter a name for this campaign (optional)"
+              {...register('name')}
+            />
+          </div>
+        </div>
+
         {/* Recipient Mode */}
         <div className="form-section">
           <h3>Recipient Mode</h3>
@@ -296,6 +445,51 @@ export const EmailsSetupPage: React.FC = () => {
                   />
                 </div>
               </div>
+              {watchedCountry && watchedObjectType && (
+                <div
+                  style={{
+                    marginTop: '10px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: matchingCountError
+                      ? '#dc3545'
+                      : matchingCountLoading
+                        ? '#0d6efd'
+                        : matchingCount === 0
+                          ? '#dc3545'
+                          : '#0f5132',
+                    backgroundColor: matchingCountError
+                      ? 'rgba(220, 53, 69, 0.12)'
+                      : matchingCountLoading
+                        ? 'rgba(13, 110, 253, 0.12)'
+                        : matchingCount === 0
+                          ? 'rgba(220, 53, 69, 0.12)'
+                          : 'rgba(13, 110, 253, 0.1)',
+                    borderRadius: '6px',
+                    padding: '10px 12px',
+                  }}
+                >
+                  {matchingCountError
+                    ? matchingCountError
+                    : matchingCountLoading
+                      ? 'Counting matching B2B objects...'
+                      : (
+                        <>
+                          Found{' '}
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '15px',
+                              color: matchingCount === 0 ? '#dc3545' : '#0b5ed7',
+                            }}
+                          >
+                            {matchingCount ?? 0}
+                          </span>{' '}
+                          B2B objects with email for the selected filters
+                        </>
+                        )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -465,6 +659,69 @@ export const EmailsSetupPage: React.FC = () => {
                 {...register('timezone')}
               />
             </div>
+          </div>
+
+          <div style={{ marginTop: '20px' }}>
+            <h4>Sender Accounts</h4>
+            {senderAccountsLoading && (
+              <div style={{ color: '#0d6efd', fontSize: '14px' }}>Loading sender accounts...</div>
+            )}
+            {senderAccountsError && (
+              <div style={{ color: '#dc3545', fontSize: '14px' }}>{senderAccountsError}</div>
+            )}
+            {!senderAccountsLoading && !senderAccountsError && (
+              <div>
+                {senderAccounts.filter((acc) => acc.server_id === (useCorporate ? '2' : '1')).length === 0 ? (
+                  <div style={{ color: '#dc3545', fontSize: '14px' }}>
+                    No {useCorporate ? 'corporate' : 'personal'} sender accounts available. Add sender accounts first.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      backgroundColor: '#f8f9fa',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
+                    {senderAccounts
+                      .filter((acc) => acc.server_id === (useCorporate ? '2' : '1'))
+                      .map((acc) => (
+                        <label
+                          key={acc.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: '#212529',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSenderIds.includes(acc.id)}
+                            onChange={(e) => handleSenderSelectionChange(acc.id, e.target.checked)}
+                            style={{ width: '16px', height: '16px' }}
+                          />
+                          <span>
+                            {acc.email}
+                            {acc.first_name || acc.last_name ? (
+                              <span style={{ color: '#6c757d', fontWeight: 400 }}>
+                                {' '}
+                                ({[acc.first_name, acc.last_name].filter(Boolean).join(' ')})
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

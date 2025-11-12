@@ -32,6 +32,8 @@ export const CampaignsListPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [campaignToDelete, setCampaignToDelete] = useState<CampaignListItem | null>(null);
 
   const fetchCampaigns = async () => {
     try {
@@ -67,6 +69,39 @@ export const CampaignsListPage: React.FC = () => {
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  const handleDelete = async (campaignId: string) => {
+    setDeletingId(campaignId);
+    try {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignStatus(campaignId)), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
+      }
+
+      setCampaigns((prev) => prev.filter((campaign) => campaign.campaign_id !== campaignId));
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setDeletingId(null);
+      setCampaignToDelete(null);
+    }
+  };
+
+  const openDeleteModal = (campaign: CampaignListItem) => {
+    setCampaignToDelete(campaign);
+  };
+
+  const closeDeleteModal = () => {
+    if (deletingId) {
+      return;
+    }
+    setCampaignToDelete(null);
+  };
 
   const formatDateTime = (isoString: string | null): string => {
     if (!isoString) return 'N/A';
@@ -161,17 +196,58 @@ export const CampaignsListPage: React.FC = () => {
                   <td>{formatDateTime(campaign.started_at)}</td>
                   <td>{formatDateTime(campaign.finished_at)}</td>
                   <td>
-                    <Link
-                      to={`/campaigns/${campaign.campaign_id}`}
-                      className="show-more-btn"
-                    >
-                      Show more
-                    </Link>
+                    <div className="actions-cell">
+                      <Link
+                        to={`/campaigns/${campaign.campaign_id}`}
+                        className="show-more-btn"
+                      >
+                        Show more
+                      </Link>
+                      {campaign.status === 'completed' && (
+                        <button
+                          type="button"
+                          className="delete-btn"
+                          onClick={() => openDeleteModal(campaign)}
+                          disabled={deletingId === campaign.campaign_id}
+                        >
+                          {deletingId === campaign.campaign_id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {campaignToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Delete campaign</h2>
+            <p>
+              Are you sure you want to delete{' '}
+              <strong>{campaignToDelete.name || 'Untitled campaign'}</strong>? This action cannot be undone.
+            </p>
+            <div className="modal-buttons">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={closeDeleteModal}
+                disabled={Boolean(deletingId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="delete-btn"
+                onClick={() => handleDelete(campaignToDelete.campaign_id)}
+                disabled={Boolean(deletingId)}
+              >
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

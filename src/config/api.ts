@@ -15,6 +15,16 @@ export const API_ENDPOINTS = {
   campaignResume: (campaignId: string) => `/api/campaigns/${campaignId}/resume`,
   b2bStats: '/api/b2b/stats/',
   b2bImport: '/api/b2b/import',
+  senderAccounts: '/api/sender-accounts',
+  mailApiUrls: '/api/mail-api-urls',
+  b2bCount: (country: string, objectType: string) => {
+    const params = new URLSearchParams({
+      country,
+      object_type: objectType,
+      has_email: 'true',
+    });
+    return `/api/b2b/count/?${params.toString()}`;
+  },
 };
 
 // Helper function to build full URL
