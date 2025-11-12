@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CampaignStatusResponse } from '../../types/api';
 import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
@@ -12,12 +12,11 @@ export const CampaignStatusPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
-  const [expandedObjects, setExpandedObjects] = useState<Set<string>>(new Set());
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
   const [etaMs, setEtaMs] = useState<number | null>(null);
   const [mutating, setMutating] = useState<boolean>(false);
 
-  const fetchCampaignStatus = async () => {
+  const fetchCampaignStatus = useCallback(async () => {
     if (!campaignId) {
       setError('Campaign ID is required');
       setLoading(false);
@@ -40,14 +39,14 @@ export const CampaignStatusPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchCampaignStatus();
   }, [campaignId]);
 
   useEffect(() => {
-    if (!autoRefresh || !campaign) {
+    fetchCampaignStatus();
+  }, [fetchCampaignStatus]);
+
+  useEffect(() => {
+    if (!autoRefresh) {
       return;
     }
 
@@ -56,7 +55,7 @@ export const CampaignStatusPage: React.FC = () => {
     }, 5000); // Refresh every 5 seconds
 
     return () => clearInterval(interval);
-  }, [autoRefresh, campaign?.status]);
+  }, [autoRefresh, fetchCampaignStatus]);
 
   // Initialize or update local countdown when response changes
   useEffect(() => {
@@ -66,7 +65,7 @@ export const CampaignStatusPage: React.FC = () => {
     } else {
       setCountdownMs(null);
     }
-  }, [campaign?.next_send_in_seconds]);
+  }, [campaign]);
 
   // Tick the countdown locally every second, independent from polling
   useEffect(() => {
@@ -90,7 +89,7 @@ export const CampaignStatusPage: React.FC = () => {
     } else {
       setEtaMs(null);
     }
-  }, [campaign?.estimated_seconds_to_finish]);
+  }, [campaign]);
 
   useEffect(() => {
     if (etaMs === null) return;
@@ -216,8 +215,6 @@ export const CampaignStatusPage: React.FC = () => {
     );
   }
 
-  const isCampaignActive = campaign.status === 'pending' || campaign.status === 'in_progress';
-
   const canPause = campaign.status === 'in_progress';
   const canResume = campaign.status === 'paused';
 
@@ -259,18 +256,6 @@ export const CampaignStatusPage: React.FC = () => {
     } finally {
       setMutating(false);
     }
-  };
-
-  const toggleObjectExpand = (placeId: string) => {
-    setExpandedObjects((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(placeId)) {
-        newSet.delete(placeId);
-      } else {
-        newSet.add(placeId);
-      }
-      return newSet;
-    });
   };
 
   return (

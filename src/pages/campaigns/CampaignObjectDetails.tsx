@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 import './CampaignObjectDetails.css';
-import { formatDateTime } from '../../utils/formatters';
 
 interface ThreadMessage {
   id: string;
