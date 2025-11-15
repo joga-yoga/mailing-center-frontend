@@ -191,6 +191,11 @@ export const CampaignObjectDetailsPage: React.FC = () => {
     
     try {
       const url = buildApiUrl(API_ENDPOINTS.sendReply(campaignId, objectId));
+      
+      // Create abort controller with 5 minute timeout for long email sending operations
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -200,7 +205,10 @@ export const CampaignObjectDetailsPage: React.FC = () => {
           subject: replySubject,
           body: replyBody,
         }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -226,7 +234,11 @@ export const CampaignObjectDetailsPage: React.FC = () => {
       
       alert('Reply sent successfully!');
     } catch (err: any) {
-      setSendError(err.message);
+      if (err.name === 'AbortError') {
+        setSendError('Request timed out. The email may still be sending in the background. Please check the thread later.');
+      } else {
+        setSendError(err.message);
+      }
     } finally {
       setSending(false);
     }
