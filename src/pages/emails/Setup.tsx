@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { TextareaField } from '../../components/TextareaField';
@@ -8,19 +8,16 @@ import { ObjectTypeSelect } from '../../components/ObjectTypeSelect';
 import { TovSelect } from '../../components/TovSelect';
 import { WritingStyleSelect } from '../../components/WritingStyleSelect';
 import { CampaignSetupRequest, CampaignSetupResponse } from '../../types/api';
-import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
-
-type SenderAccountOption = {
-  id: string;
-  email: string;
-  server_id: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  is_active: boolean;
-};
+import { API_ENDPOINTS } from '../../config/api';
+import { apiClient } from '../../utils/apiClient';
+import { useSenderAccounts } from '../../hooks/useSenderAccounts';
+import { useRecipientCount } from '../../hooks/useRecipientCount';
+import './Setup.css';
 
 export const EmailsSetupPage: React.FC = () => {
   const navigate = useNavigate();
+  const emailsTextareaRef = useRef<HTMLTextAreaElement>(null);
+  
   const [recipientMode, setRecipientMode] = useState<'emails' | 'filters'>('emails');
   const [parsing, setParsing] = useState(false);
   const [autoAnswering, setAutoAnswering] = useState(false);
@@ -29,147 +26,22 @@ export const EmailsSetupPage: React.FC = () => {
   const [submitResult, setSubmitResult] = useState<CampaignSetupResponse | null>(null);
   const [submitError, setSubmitError] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [matchingCount, setMatchingCount] = useState<number | null>(null);
-  const [matchingCountLoading, setMatchingCountLoading] = useState(false);
-  const [matchingCountError, setMatchingCountError] = useState<string>('');
-  const [senderAccounts, setSenderAccounts] = useState<SenderAccountOption[]>([]);
-  const [senderAccountsLoading, setSenderAccountsLoading] = useState(false);
-  const [senderAccountsError, setSenderAccountsError] = useState<string>('');
-  const [selectedSenderIds, setSelectedSenderIds] = useState<string[]>([]);
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch, setError, clearErrors } = useForm<CampaignSetupRequest>({});
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<CampaignSetupRequest>({});
 
-  const watchedEmails = watch('emails');
   const watchedCountry = watch('country');
   const watchedObjectType = watch('object_type');
-  const watchedParsingPrompt = watch('parsing_prompt');
-  const watchedReplyPrompt = watch('reply_prompt');
-  React.useEffect(() => {
-    const fetchSenderAccounts = async () => {
-      setSenderAccountsLoading(true);
-      setSenderAccountsError('');
-      try {
-        const response = await fetch(
-          buildApiUrl(`${API_ENDPOINTS.senderAccounts}?active_only=true`)
-        );
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
-        }
-        const data: SenderAccountOption[] = await response.json();
-        setSenderAccounts(data);
-      } catch (err) {
-        setSenderAccountsError(err instanceof Error ? err.message : 'Failed to load sender accounts');
-      } finally {
-        setSenderAccountsLoading(false);
-      }
-    };
 
-    fetchSenderAccounts();
-  }, []);
-
-  React.useEffect(() => {
-    if (!senderAccounts.length) {
-      setSelectedSenderIds([]);
-      return;
-    }
-    syncSelectionWithServerType(useCorporate, senderAccounts);
-  }, [useCorporate, senderAccounts]);
-
-  // Валідація взаємовиключення режимів одержувачів
-  React.useEffect(() => {
-    if (recipientMode === 'emails' && watchedCountry && watchedObjectType) {
-      setError('country', { message: 'Cannot use both recipient modes' });
-      setError('object_type', { message: 'Cannot use both recipient modes' });
-    } else if (recipientMode === 'filters' && watchedEmails && watchedEmails.length > 0) {
-      setError('emails', { message: 'Cannot use both recipient modes' });
-    } else {
-      clearErrors(['emails', 'country', 'object_type']);
-    }
-  }, [recipientMode, watchedEmails, watchedCountry, watchedObjectType, setError, clearErrors]);
-
-  // Валідація умовних полів
-  React.useEffect(() => {
-    if (parsing && !watchedParsingPrompt) {
-      setError('parsing_prompt', { message: 'This field is required when parsing is enabled' });
-    } else {
-      clearErrors('parsing_prompt');
-    }
-  }, [parsing, watchedParsingPrompt, setError, clearErrors]);
-
-  React.useEffect(() => {
-    if (autoAnswering && !watchedReplyPrompt) {
-      setError('reply_prompt', { message: 'This field is required when auto-answering is enabled' });
-    } else {
-      clearErrors('reply_prompt');
-    }
-  }, [autoAnswering, watchedReplyPrompt, setError, clearErrors]);
-
-  React.useEffect(() => {
-    if (recipientMode !== 'filters' || !watchedCountry || !watchedObjectType) {
-      setMatchingCount(null);
-      setMatchingCountError('');
-      setMatchingCountLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setMatchingCountLoading(true);
-    setMatchingCountError('');
-
-    const fetchCount = async () => {
-      try {
-        const response = await fetch(
-          buildApiUrl(API_ENDPOINTS.b2bCount(watchedCountry, watchedObjectType))
-        );
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
-        }
-        const data = await response.json();
-        if (!cancelled) {
-          setMatchingCount(typeof data.count === 'number' ? data.count : 0);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setMatchingCount(null);
-          setMatchingCountError(err instanceof Error ? err.message : 'Failed to load count');
-        }
-      } finally {
-        if (!cancelled) {
-          setMatchingCountLoading(false);
-        }
-      }
-    };
-
-    fetchCount();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [recipientMode, watchedCountry, watchedObjectType]);
-
-  function syncSelectionWithServerType(useCorporateValue: boolean, accounts: SenderAccountOption[]) {
-    const serverId = useCorporateValue ? '2' : '1';
-    const filtered = accounts.filter((acc) => acc.server_id === serverId);
-    setSelectedSenderIds(filtered.map((acc) => acc.id));
-  }
-
-  const handleSenderSelectionChange = (accountId: string, checked: boolean) => {
-    setSelectedSenderIds((prev) => {
-      if (checked) {
-        if (prev.includes(accountId)) {
-          return prev;
-        }
-        return [...prev, accountId];
-      }
-      return prev.filter((id) => id !== accountId);
-    });
-  };
+  // Use custom hooks
+  const senderAccounts = useSenderAccounts(useCorporate);
+  const recipientCount = useRecipientCount(
+    recipientMode === 'filters',
+    watchedCountry,
+    watchedObjectType
+  );
 
   const handleRecipientModeChange = (mode: 'emails' | 'filters') => {
     setRecipientMode(mode);
-    // Clear opposite mode fields
     if (mode === 'emails') {
       setValue('country', '');
       setValue('object_type', '');
@@ -185,86 +57,75 @@ export const EmailsSetupPage: React.FC = () => {
       .filter(email => email.length > 0);
   };
 
-  const handleFormSubmit = async (data: CampaignSetupRequest) => {
-    // Validate form before showing confirmation
-    let isValid = true;
-    let validationErrors: string[] = [];
+  const validateForm = (data: CampaignSetupRequest): { isValid: boolean; errors: string[] } => {
+    const validationErrors: string[] = [];
 
     // Check recipient mode validation
     if (recipientMode === 'emails') {
-      const emailsValue = data.emails;
-      let emails: string[] = [];
-      
-      if (typeof emailsValue === 'string') {
-        emails = parseEmails(emailsValue);
-      } else if (Array.isArray(emailsValue)) {
-        emails = emailsValue;
-      }
+      // Get value from ref instead of direct DOM query
+      const emailsValue = emailsTextareaRef.current?.value || '';
+      const emails = parseEmails(emailsValue);
       
       if (emails.length === 0) {
-        isValid = false;
         validationErrors.push('At least one email address is required');
       }
     }
 
     if (recipientMode === 'filters' && (!data.country || !data.object_type)) {
-      isValid = false;
       validationErrors.push('Country and object type are required');
     }
 
-    const currentServerId = useCorporate ? '2' : '1';
-    const relevantAccounts = senderAccounts.filter((acc) => acc.server_id === currentServerId);
-    if (relevantAccounts.length === 0) {
+    if (senderAccounts.accounts.length === 0) {
       validationErrors.push(`No ${useCorporate ? 'corporate' : 'personal'} sender accounts available`);
-      isValid = false;
-    } else if (selectedSenderIds.length === 0) {
-      isValid = false;
+    } else if (senderAccounts.selectedIds.length === 0) {
       validationErrors.push('Select at least one sender account');
     }
 
     // Check required prompts
     if (!data.subject_prompt?.trim()) {
-      isValid = false;
       validationErrors.push('Subject prompt is required');
     }
 
     if (!data.body_prompt?.trim()) {
-      isValid = false;
       validationErrors.push('Body prompt is required');
     }
 
     // Check communication style fields
     if (!data.tov?.trim()) {
-      isValid = false;
       validationErrors.push('Tone of Voice is required');
     }
 
     if (!data.style?.trim()) {
-      isValid = false;
       validationErrors.push('Writing Style is required');
     }
 
     if (!data.language?.trim()) {
-      isValid = false;
       validationErrors.push('Language is required');
     }
 
     // Check conditional fields
     if (parsing && !data.parsing_prompt?.trim()) {
-      isValid = false;
       validationErrors.push('What to find is required when website parsing is enabled');
     }
 
     if (autoAnswering && !data.reply_prompt?.trim()) {
-      isValid = false;
       validationErrors.push('Reply prompt is required when auto-answering is enabled');
     }
 
-    if (isValid) {
-      setSubmitError(''); // Clear any previous errors
+    return {
+      isValid: validationErrors.length === 0,
+      errors: validationErrors
+    };
+  };
+
+  const handleFormSubmit = async (data: CampaignSetupRequest) => {
+    const validation = validateForm(data);
+    
+    if (validation.isValid) {
+      setSubmitError('');
       setShowConfirmation(true);
     } else {
-      setSubmitError(validationErrors.join(', '));
+      setSubmitError(validation.errors.join(', '));
     }
   };
 
@@ -277,79 +138,39 @@ export const EmailsSetupPage: React.FC = () => {
     try {
       const data = watch();
 
-      // Ensure use_corporate is included in form data
+      // Set flags
       data.use_corporate = useCorporate;
-      
-      // Ensure auto_answering and parsing are included in form data
       data.auto_answering = autoAnswering;
       data.parsing = parsing;
 
-      // Convert emails from string to array
-      if (typeof data.emails === 'string') {
-        data.emails = parseEmails(data.emails);
-      } else if (data.emails && typeof data.emails === 'object' && data.emails.length === 0) {
-        const emailsText = (document.querySelector('[name="emails"]') as HTMLTextAreaElement)?.value || '';
+      // Convert emails from textarea ref instead of DOM query
+      if (recipientMode === 'emails') {
+        const emailsText = emailsTextareaRef.current?.value || '';
         data.emails = parseEmails(emailsText);
       }
 
       // Frontend validation
-      if (recipientMode === 'emails' && (!data.emails || data.emails.length === 0)) {
-        setSubmitError('At least one email address is required');
+      const validation = validateForm(data);
+      if (!validation.isValid) {
+        setSubmitError(validation.errors.join(', '));
         setIsSubmitting(false);
         return;
       }
 
-      if (recipientMode === 'filters' && (!data.country || !data.object_type)) {
-        setSubmitError('Country and object type are required');
-        setIsSubmitting(false);
-        return;
-      }
+      data.sender_account_ids = senderAccounts.selectedIds;
 
-      const currentServerId = useCorporate ? '2' : '1';
-      const relevantAccounts = senderAccounts.filter((acc) => acc.server_id === currentServerId);
-      if (relevantAccounts.length === 0) {
-        setSubmitError(`No ${useCorporate ? 'corporate' : 'personal'} sender accounts available`);
-        setIsSubmitting(false);
-        return;
-      }
+      const result = await apiClient.post<CampaignSetupResponse>(
+        API_ENDPOINTS.emailsSetup,
+        data
+      );
 
-      if (!selectedSenderIds.length) {
-        setSubmitError('Select at least one sender account');
-        setIsSubmitting(false);
-        return;
-      }
-
-      data.sender_account_ids = selectedSenderIds;
-
-      // Debug logging
-      console.log('Sending campaign data:', {
-        ...data,
-        auto_answering: data.auto_answering,
-        parsing: data.parsing,
-        use_corporate: data.use_corporate
-      });
-
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.emailsSetup), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
-
-      const result: CampaignSetupResponse = await response.json();
       setSubmitResult(result);
       
       // Redirect to campaign status page
       if (result.campaign_id) {
         setTimeout(() => {
           navigate(`/campaigns/${result.campaign_id}`);
-        }, 2000); // Give user 2 seconds to see the success message
+        }, 2000);
       }
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Unknown error');
@@ -361,69 +182,67 @@ export const EmailsSetupPage: React.FC = () => {
   return (
     <div className="container">
       <div className="emails-setup-page narrow-container">
-      <h1>Email Campaign Setup</h1>
+        <h1>Email Campaign Setup</h1>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="campaign-form">
-        <div className="form-section">
-          <h3>Campaign Details</h3>
-          <div className="form-group">
-            <label htmlFor="campaign-name">Campaign Name</label>
-            <input
-              id="campaign-name"
-              type="text"
-              className="form-control"
-              placeholder="Enter a name for this campaign (optional)"
-              {...register('name')}
-            />
-          </div>
-        </div>
-
-        {/* Recipient Mode */}
-        <div className="form-section">
-          <h3>Recipient Mode</h3>
-
-          <div className="radio-group">
-            <div className="radio-option">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="campaign-form">
+          <div className="form-section">
+            <h3>Campaign Details</h3>
+            <div className="form-group">
+              <label htmlFor="campaign-name">Campaign Name</label>
               <input
-                type="radio"
-                id="emails-mode"
-                name="recipient-mode"
-                checked={recipientMode === 'emails'}
-                onChange={() => handleRecipientModeChange('emails')}
+                id="campaign-name"
+                type="text"
+                className="form-control"
+                placeholder="Enter a name for this campaign (optional)"
+                {...register('name')}
               />
-              <label htmlFor="emails-mode">Email List</label>
-            </div>
-            <div className="radio-option">
-              <input
-                type="radio"
-                id="filters-mode"
-                name="recipient-mode"
-                checked={recipientMode === 'filters'}
-                onChange={() => handleRecipientModeChange('filters')}
-              />
-              <label htmlFor="filters-mode">Database Filters</label>
             </div>
           </div>
 
-          {recipientMode === 'emails' && (
-            <TextareaField
-              label="Email Addresses"
-              name="emails"
-              value={typeof watchedEmails === 'string' ? watchedEmails : Array.isArray(watchedEmails) ? watchedEmails.join('\n') : ''}
-              onChange={(e) => {
-                setValue('emails', e.target.value as any);
-              }}
-              error={errors.emails?.message}
-              hint="Enter email addresses separated by: new line (Enter), comma (,), or semicolon (;). Example: user1@example.com, user2@example.com or one per line"
-              required
-              rows={6}
-            />
-          )}
+          {/* Recipient Mode */}
+          <div className="form-section">
+            <h3>Recipient Mode</h3>
 
-          {recipientMode === 'filters' && (
-            <>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
+            <div className="radio-group">
+              <div className="radio-option">
+                <input
+                  type="radio"
+                  id="emails-mode"
+                  name="recipient-mode"
+                  checked={recipientMode === 'emails'}
+                  onChange={() => handleRecipientModeChange('emails')}
+                />
+                <label htmlFor="emails-mode">Email List</label>
+              </div>
+              <div className="radio-option">
+                <input
+                  type="radio"
+                  id="filters-mode"
+                  name="recipient-mode"
+                  checked={recipientMode === 'filters'}
+                  onChange={() => handleRecipientModeChange('filters')}
+                />
+                <label htmlFor="filters-mode">Database Filters</label>
+              </div>
+            </div>
+
+            {recipientMode === 'emails' && (
+              <TextareaField
+                label="Email Addresses"
+                name="emails"
+                ref={emailsTextareaRef}
+                value={watch('emails') as any}
+                onChange={(e) => setValue('emails', e.target.value as any)}
+                error={errors.emails?.message}
+                hint="Enter email addresses separated by: new line (Enter), comma (,), or semicolon (;). Example: user1@example.com, user2@example.com or one per line"
+                required
+                rows={6}
+              />
+            )}
+
+            {recipientMode === 'filters' && (
+              <>
+                <div className="form-row">
                   <CountrySelect
                     label="Country"
                     name="country"
@@ -433,8 +252,6 @@ export const EmailsSetupPage: React.FC = () => {
                     required={recipientMode === 'filters'}
                     placeholder="Select country..."
                   />
-                </div>
-                <div style={{ flex: 1 }}>
                   <ObjectTypeSelect
                     label="Object Type"
                     name="object_type"
@@ -444,153 +261,133 @@ export const EmailsSetupPage: React.FC = () => {
                     required={recipientMode === 'filters'}
                   />
                 </div>
-              </div>
-              {watchedCountry && watchedObjectType && (
-                <div
-                  style={{
-                    marginTop: '10px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: matchingCountError
-                      ? '#dc3545'
-                      : matchingCountLoading
-                        ? '#0d6efd'
-                        : matchingCount === 0
-                          ? '#dc3545'
-                          : '#0f5132',
-                    backgroundColor: matchingCountError
-                      ? 'rgba(220, 53, 69, 0.12)'
-                      : matchingCountLoading
-                        ? 'rgba(13, 110, 253, 0.12)'
-                        : matchingCount === 0
-                          ? 'rgba(220, 53, 69, 0.12)'
-                          : 'rgba(13, 110, 253, 0.1)',
-                    borderRadius: '6px',
-                    padding: '10px 12px',
-                  }}
-                >
-                  {matchingCountError
-                    ? matchingCountError
-                    : matchingCountLoading
+                {watchedCountry && watchedObjectType && (
+                  <div
+                    className={`count-display ${
+                      recipientCount.error
+                        ? 'error'
+                        : recipientCount.loading
+                        ? 'loading'
+                        : recipientCount.count === 0
+                        ? 'zero'
+                        : 'success'
+                    }`}
+                  >
+                    {recipientCount.error
+                      ? recipientCount.error
+                      : recipientCount.loading
                       ? 'Counting matching B2B objects...'
                       : (
                         <>
                           Found{' '}
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              fontSize: '15px',
-                              color: matchingCount === 0 ? '#dc3545' : '#0b5ed7',
-                            }}
-                          >
-                            {matchingCount ?? 0}
+                          <span className="count-number">
+                            {recipientCount.count ?? 0}
                           </span>{' '}
                           B2B objects with email for the selected filters
                         </>
-                        )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                      )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
-        {/* Generation Prompts */}
-        <div className="form-section">
-          <h3>Generation Prompts</h3>
+          {/* Generation Prompts */}
+          <div className="form-section">
+            <h3>Generation Prompts</h3>
 
-          <TextareaField
-            label="Subject Line Prompt"
-            name="subject_prompt"
-            value={watch('subject_prompt') || ''}
-            onChange={(e) => setValue('subject_prompt', e.target.value)}
-            error={errors.subject_prompt?.message}
-            required
-            rows={3}
-            placeholder="Describe what the email subject should be like..."
-          />
-
-          <TextareaField
-            label="Email Body Prompt"
-            name="body_prompt"
-            value={watch('body_prompt') || ''}
-            onChange={(e) => setValue('body_prompt', e.target.value)}
-            error={errors.body_prompt?.message}
-            required
-            rows={6}
-            placeholder="Describe what the email content should be like..."
-          />
-        </div>
-
-        {/* Website Parsing */}
-        <div className="form-section">
-          <h3>Website Parsing</h3>
-
-          <ToggleField
-            label="Enable Website Parsing"
-            name="parsing"
-            checked={parsing}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              setParsing(checked);
-              setValue('parsing', checked);
-              if (!checked) {
-                setValue('parsing_prompt', '');
-              }
-            }}
-          />
-
-          {parsing && (
             <TextareaField
-              label="What to Find"
-              name="parsing_prompt"
-              value={watch('parsing_prompt') || ''}
-              onChange={(e) => setValue('parsing_prompt', e.target.value)}
-              error={errors.parsing_prompt?.message}
+              label="Subject Line Prompt"
+              name="subject_prompt"
+              value={watch('subject_prompt') || ''}
+              onChange={(e) => setValue('subject_prompt', e.target.value)}
+              error={errors.subject_prompt?.message}
               required
-              rows={4}
-              placeholder="Describe what information to find on the website..."
+              rows={3}
+              placeholder="Describe what the email subject should be like..."
             />
-          )}
-        </div>
 
-        {/* Auto Responses */}
-        <div className="form-section">
-          <h3>Auto Responses</h3>
-
-          <ToggleField
-            label="Enable Auto Responses"
-            name="auto_answering"
-            checked={autoAnswering}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              setAutoAnswering(checked);
-              setValue('auto_answering', checked);
-              if (!checked) {
-                setValue('reply_prompt', '');
-              }
-            }}
-          />
-
-          {autoAnswering && (
             <TextareaField
-              label="Auto Response Prompt"
-              name="reply_prompt"
-              value={watch('reply_prompt') || ''}
-              onChange={(e) => setValue('reply_prompt', e.target.value)}
-              error={errors.reply_prompt?.message}
+              label="Email Body Prompt"
+              name="body_prompt"
+              value={watch('body_prompt') || ''}
+              onChange={(e) => setValue('body_prompt', e.target.value)}
+              error={errors.body_prompt?.message}
               required
-              rows={4}
-              placeholder="Describe how to generate auto responses..."
+              rows={6}
+              placeholder="Describe what the email content should be like..."
             />
-          )}
-        </div>
+          </div>
 
-        {/* Communication Style */}
-        <div className="form-section">
-          <h3>Communication Style</h3>
+          {/* Website Parsing */}
+          <div className="form-section">
+            <h3>Website Parsing</h3>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div style={{ flex: 1 }}>
+            <ToggleField
+              label="Enable Website Parsing"
+              name="parsing"
+              checked={parsing}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setParsing(checked);
+                setValue('parsing', checked);
+                if (!checked) {
+                  setValue('parsing_prompt', '');
+                }
+              }}
+            />
+
+            {parsing && (
+              <TextareaField
+                label="What to Find"
+                name="parsing_prompt"
+                value={watch('parsing_prompt') || ''}
+                onChange={(e) => setValue('parsing_prompt', e.target.value)}
+                error={errors.parsing_prompt?.message}
+                required
+                rows={4}
+                placeholder="Describe what information to find on the website..."
+              />
+            )}
+          </div>
+
+          {/* Auto Responses */}
+          <div className="form-section">
+            <h3>Auto Responses</h3>
+
+            <ToggleField
+              label="Enable Auto Responses"
+              name="auto_answering"
+              checked={autoAnswering}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setAutoAnswering(checked);
+                setValue('auto_answering', checked);
+                if (!checked) {
+                  setValue('reply_prompt', '');
+                }
+              }}
+            />
+
+            {autoAnswering && (
+              <TextareaField
+                label="Auto Response Prompt"
+                name="reply_prompt"
+                value={watch('reply_prompt') || ''}
+                onChange={(e) => setValue('reply_prompt', e.target.value)}
+                error={errors.reply_prompt?.message}
+                required
+                rows={4}
+                placeholder="Describe how to generate auto responses..."
+              />
+            )}
+          </div>
+
+          {/* Communication Style */}
+          <div className="form-section">
+            <h3>Communication Style</h3>
+
+            <div className="form-row">
               <TovSelect
                 label="Tone of Voice (TOV)"
                 name="tov"
@@ -599,8 +396,6 @@ export const EmailsSetupPage: React.FC = () => {
                 placeholder="Select tone of voice..."
                 required
               />
-            </div>
-            <div style={{ flex: 1 }}>
               <WritingStyleSelect
                 label="Writing Style"
                 name="style"
@@ -610,48 +405,44 @@ export const EmailsSetupPage: React.FC = () => {
                 required
               />
             </div>
+
+            <div className="form-group">
+              <label htmlFor="language">
+                Language
+                <span className="required">*</span>
+              </label>
+              <input
+                id="language"
+                type="text"
+                className="form-control"
+                placeholder="e.g., English, Ukrainian, Polish..."
+                {...register('language')}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="language">
-              Language
-              <span className="required">*</span>
-            </label>
-            <input
-              id="language"
-              type="text"
-              className="form-control"
-              placeholder="e.g., English, Ukrainian, Polish..."
-              {...register('language')}
+          {/* Sending Settings */}
+          <div className="form-section">
+            <h3>Sending Settings</h3>
+
+            <ToggleField
+              label="Use Corporate Domain"
+              name="use_corporate"
+              checked={useCorporate}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setUseCorporate(checked);
+                setValue('use_corporate', checked);
+              }}
             />
-          </div>
-        </div>
 
-        {/* Sending Settings */}
-        <div className="form-section">
-          <h3>Sending Settings</h3>
-
-          <ToggleField
-            label="Use Corporate Domain"
-            name="use_corporate"
-            checked={useCorporate}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              setUseCorporate(checked);
-              setValue('use_corporate', checked);
-            }}
-          />
-
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div style={{ flex: 1 }}>
+            <div className="form-row">
               <input
                 type="number"
                 className="form-control"
                 placeholder="Daily Limit (optional)"
                 {...register('daily_limit', { valueAsNumber: true, min: 1 })}
               />
-            </div>
-            <div style={{ flex: 1 }}>
               <input
                 type="text"
                 className="form-control"
@@ -659,58 +450,34 @@ export const EmailsSetupPage: React.FC = () => {
                 {...register('timezone')}
               />
             </div>
-          </div>
 
-          <div style={{ marginTop: '20px' }}>
-            <h4>Sender Accounts</h4>
-            {senderAccountsLoading && (
-              <div style={{ color: '#0d6efd', fontSize: '14px' }}>Loading sender accounts...</div>
-            )}
-            {senderAccountsError && (
-              <div style={{ color: '#dc3545', fontSize: '14px' }}>{senderAccountsError}</div>
-            )}
-            {!senderAccountsLoading && !senderAccountsError && (
-              <div>
-                {senderAccounts.filter((acc) => acc.server_id === (useCorporate ? '2' : '1')).length === 0 ? (
-                  <div style={{ color: '#dc3545', fontSize: '14px' }}>
-                    No {useCorporate ? 'corporate' : 'personal'} sender accounts available. Add sender accounts first.
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      marginTop: '10px',
-                      padding: '12px',
-                      borderRadius: '6px',
-                      backgroundColor: '#f8f9fa',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
-                  >
-                    {senderAccounts
-                      .filter((acc) => acc.server_id === (useCorporate ? '2' : '1'))
-                      .map((acc) => (
-                        <label
-                          key={acc.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            color: '#212529',
-                          }}
-                        >
+            <div>
+              <h4>Sender Accounts</h4>
+              {senderAccounts.loading && (
+                <div className="sender-accounts-loading">Loading sender accounts...</div>
+              )}
+              {senderAccounts.error && (
+                <div className="sender-accounts-error">{senderAccounts.error}</div>
+              )}
+              {!senderAccounts.loading && !senderAccounts.error && (
+                <div>
+                  {senderAccounts.accounts.length === 0 ? (
+                    <div className="sender-accounts-empty">
+                      No {useCorporate ? 'corporate' : 'personal'} sender accounts available. Add sender accounts first.
+                    </div>
+                  ) : (
+                    <div className="sender-accounts-list">
+                      {senderAccounts.accounts.map((acc) => (
+                        <label key={acc.id} className="sender-account-item">
                           <input
                             type="checkbox"
-                            checked={selectedSenderIds.includes(acc.id)}
-                            onChange={(e) => handleSenderSelectionChange(acc.id, e.target.checked)}
-                            style={{ width: '16px', height: '16px' }}
+                            checked={senderAccounts.selectedIds.includes(acc.id)}
+                            onChange={(e) => senderAccounts.toggleAccount(acc.id, e.target.checked)}
                           />
                           <span>
                             {acc.email}
                             {acc.first_name || acc.last_name ? (
-                              <span style={{ color: '#6c757d', fontWeight: 400 }}>
+                              <span className="sender-account-name">
                                 {' '}
                                 ({[acc.first_name, acc.last_name].filter(Boolean).join(' ')})
                               </span>
@@ -718,66 +485,66 @@ export const EmailsSetupPage: React.FC = () => {
                           </span>
                         </label>
                       ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Error Messages */}
-        {submitError && (
-          <div className="error-alert">
-            <strong>Error:</strong> {submitError}
-          </div>
-        )}
-
-        {/* Submit Result */}
-        {submitResult && (
-          <div className="success-message">
-            <strong>Campaign created successfully!</strong>
-            <p><strong>Queue:</strong> {submitResult.queued} emails</p>
-            <p><strong>Message:</strong> {submitResult.message}</p>
-            <p className="redirect-message">Redirecting to campaign status...</p>
-          </div>
-        )}
-
-        {/* Confirmation Dialog */}
-        {showConfirmation && (
-          <div className="confirmation-dialog">
-            <div className="confirmation-content">
-              <h3>Confirm Campaign Creation</h3>
-              <p>Are you sure you want to create this email campaign with the current settings?</p>
-              <div className="confirmation-buttons">
-                <button
-                  type="button"
-                  className="button cancel-btn"
-                  onClick={() => setShowConfirmation(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="button create-btn"
-                  onClick={confirmSubmit}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Creating Campaign...' : 'Create Campaign'}
-                </button>
-              </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="button"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Creating Campaign...' : 'Create Campaign'}
-        </button>
-      </form>
+          {/* Error Messages */}
+          {submitError && (
+            <div className="error-alert">
+              <strong>Error:</strong> {submitError}
+            </div>
+          )}
+
+          {/* Submit Result */}
+          {submitResult && (
+            <div className="success-message">
+              <strong>Campaign created successfully!</strong>
+              <p><strong>Queue:</strong> {submitResult.queued} emails</p>
+              <p><strong>Message:</strong> {submitResult.message}</p>
+              <p className="redirect-message">Redirecting to campaign status...</p>
+            </div>
+          )}
+
+          {/* Confirmation Dialog */}
+          {showConfirmation && (
+            <div className="confirmation-dialog">
+              <div className="confirmation-content">
+                <h3>Confirm Campaign Creation</h3>
+                <p>Are you sure you want to create this email campaign with the current settings?</p>
+                <div className="confirmation-buttons">
+                  <button
+                    type="button"
+                    className="button cancel-btn"
+                    onClick={() => setShowConfirmation(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="button create-btn"
+                    onClick={confirmSubmit}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Creating Campaign...' : 'Create Campaign'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="button"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating Campaign...' : 'Create Campaign'}
+          </button>
+        </form>
       </div>
     </div>
   );

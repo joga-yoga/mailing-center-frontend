@@ -1,0 +1,263 @@
+/* Email Campaign Setup Page Styles */
+
+.emails-setup-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.campaign-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-section h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.form-section h4 {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #212529;
+}
+
+/* Radio Group */
+.radio-group {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.radio-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.radio-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Form Layout */
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row > * {
+  flex: 1;
+}
+
+/* Count Display */
+.count-display {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.count-display.loading {
+  color: #0d6efd;
+  background-color: rgba(13, 110, 253, 0.12);
+}
+
+.count-display.error {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.12);
+}
+
+.count-display.zero {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.12);
+}
+
+.count-display.success {
+  color: #0f5132;
+  background-color: rgba(13, 110, 253, 0.1);
+}
+
+.count-display .count-number {
+  font-weight: 700;
+  font-size: 15px;
+  color: #0b5ed7;
+}
+
+.count-display.zero .count-number {
+  color: #dc3545;
+}
+
+/* Sender Accounts */
+.sender-accounts-loading,
+.sender-accounts-error,
+.sender-accounts-empty {
+  font-size: 14px;
+  padding: 10px;
+}
+
+.sender-accounts-loading {
+  color: #0d6efd;
+}
+
+.sender-accounts-error,
+.sender-accounts-empty {
+  color: #dc3545;
+}
+
+.sender-accounts-list {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sender-account-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #212529;
+  cursor: pointer;
+  margin: 0;
+}
+
+.sender-account-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.sender-account-name {
+  color: #6c757d;
+  font-weight: 400;
+}
+
+/* Error Alert */
+.error-alert {
+  padding: 12px 16px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c2c7;
+  border-radius: 6px;
+  color: #842029;
+}
+
+.error-alert strong {
+  font-weight: 600;
+}
+
+/* Success Message */
+.success-message {
+  padding: 16px;
+  background-color: #d1e7dd;
+  border: 1px solid #badbcc;
+  border-radius: 6px;
+  color: #0f5132;
+}
+
+.success-message strong {
+  font-weight: 600;
+}
+
+.success-message p {
+  margin: 8px 0;
+}
+
+.redirect-message {
+  margin-top: 12px;
+  font-style: italic;
+  color: #146c43;
+}
+
+/* Confirmation Dialog */
+.confirmation-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirmation-content {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-content h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 20px;
+  color: #212529;
+}
+
+.confirmation-content p {
+  margin-bottom: 20px;
+  color: #6c757d;
+}
+
+.confirmation-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirmation-buttons .button {
+  min-width: 120px;
+}
+
+.confirmation-buttons .cancel-btn {
+  background-color: #6c757d;
+}
+
+.confirmation-buttons .cancel-btn:hover {
+  background-color: #5c636a;
+}
+
+.confirmation-buttons .create-btn {
+  background-color: #0d6efd;
+}
+
+.confirmation-buttons .create-btn:hover:not(:disabled) {
+  background-color: #0b5ed7;
+}
+
+/* Submit Button */
+.campaign-form > .button {
+  align-self: flex-start;
+  min-width: 200px;
+}
+

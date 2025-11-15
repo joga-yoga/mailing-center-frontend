@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CampaignStatusResponse } from '../../types/api';
-import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
+import { API_ENDPOINTS } from '../../config/api';
+import { apiClient } from '../../utils/apiClient';
 import './CampaignStatus.css';
 
 export const CampaignStatusPage: React.FC = () => {
@@ -24,14 +25,9 @@ export const CampaignStatusPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignStatus(campaignId)));
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
-
-      const data: CampaignStatusResponse = await response.json();
+      const data = await apiClient.get<CampaignStatusResponse>(
+        API_ENDPOINTS.campaignStatus(campaignId)
+      );
       setCampaign(data);
       setError('');
     } catch (err) {
@@ -222,14 +218,7 @@ export const CampaignStatusPage: React.FC = () => {
     if (!campaignId) return;
     try {
       setMutating(true);
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignPause(campaignId)), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
+      await apiClient.post(API_ENDPOINTS.campaignPause(campaignId));
       await fetchCampaignStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -242,14 +231,7 @@ export const CampaignStatusPage: React.FC = () => {
     if (!campaignId) return;
     try {
       setMutating(true);
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignResume(campaignId)), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
+      await apiClient.post(API_ENDPOINTS.campaignResume(campaignId));
       await fetchCampaignStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

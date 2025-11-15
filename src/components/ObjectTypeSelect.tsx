@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FormField } from './FormField';
 import './ObjectTypeSelect.css';
-import { buildApiUrl, API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS } from '../config/api';
+import { apiClient } from '../utils/apiClient';
 
 interface ObjectTypeOption {
   value: string;
@@ -48,9 +49,8 @@ export const ObjectTypeSelect: React.FC<ObjectTypeSelectProps> = ({
   useEffect(() => {
     const fetchObjectTypes = async () => {
       setIsLoading(true);
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.b2bStats));
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const data = await apiClient.get<{ types: string[] }>(API_ENDPOINTS.b2bStats);
         const typeNames: string[] = data.types || [];
         const typesList: ObjectTypeOption[] = typeNames
           .sort((a, b) => a.localeCompare(b))
@@ -60,8 +60,11 @@ export const ObjectTypeSelect: React.FC<ObjectTypeSelectProps> = ({
             sendValue: type,
           }));
         setObjectTypes(typesList);
+      } catch (err) {
+        console.error('Failed to fetch object types:', err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     fetchObjectTypes();
   }, []);

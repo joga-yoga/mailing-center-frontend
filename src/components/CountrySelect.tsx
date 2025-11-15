@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FormField } from './FormField';
 import './CountrySelect.css';
-import { buildApiUrl, API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS } from '../config/api';
+import { apiClient } from '../utils/apiClient';
 
 interface Country {
   code: string;
@@ -183,9 +184,8 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   useEffect(() => {
     const fetchCountries = async () => {
       setIsLoading(true);
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.b2bStats));
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const data = await apiClient.get<{ countries: string[] }>(API_ENDPOINTS.b2bStats);
         const countryNames: string[] = data.countries || [];
         const countriesList: Country[] = countryNames
           .sort((a, b) => a.localeCompare(b))
@@ -196,8 +196,11 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
           }));
         setCountries(countriesList);
         setFilteredCountries(countriesList);
+      } catch (err) {
+        console.error('Failed to fetch countries:', err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     fetchCountries();
   }, []);

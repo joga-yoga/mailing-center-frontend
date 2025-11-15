@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { buildApiUrl } from '../config/api';
 import { API_ENDPOINTS } from '../config/api';
-import { setAuthenticated } from '../utils/auth';
+import { apiClient } from '../utils/apiClient';
+import { setToken } from '../utils/auth';
 import './Login.css';
 
 export const LoginPage: React.FC = () => {
@@ -15,26 +15,25 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.checkPassword), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      });
+      const data = await apiClient.post<{ 
+        success: boolean; 
+        message?: string;
+        access_token?: string;
+        token_type?: string;
+      }>(
+        API_ENDPOINTS.checkPassword,
+        { password }
+      );
 
-      const data = await response.json();
-
-      if (data.success) {
-        setAuthenticated(true);
+      if (data.success && data.access_token) {
+        setToken(data.access_token);
         // Reload page to access protected routes
         window.location.href = '/';
       } else {
         setError(data.message || 'Incorrect password');
       }
     } catch (err) {
-      setError('Failed to verify password. Please try again.');
-      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to verify password. Please try again.');
     } finally {
       setLoading(false);
     }

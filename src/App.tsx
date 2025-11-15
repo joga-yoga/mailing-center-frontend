@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { LoginPage } from './pages/Login';
 import { EmailsSetupPage } from './pages/emails/Setup';
 import { CampaignsListPage } from './pages/campaigns/CampaignsList';
 import { CampaignStatusPage } from './pages/campaigns/CampaignStatus';
@@ -12,6 +13,10 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Login page - not protected */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Protected routes */}
         <Route
           path="/"
           element={

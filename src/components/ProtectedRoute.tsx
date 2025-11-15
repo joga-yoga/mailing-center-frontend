@@ -1,6 +1,6 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
-import { LoginPage } from '../pages/Login';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (!isAuthenticated()) {
-    return <LoginPage />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
