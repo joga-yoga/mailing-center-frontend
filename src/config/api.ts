@@ -1,6 +1,13 @@
 // API Configuration
 // You can easily change the base URL here
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+// For production, set REACT_APP_API_BASE_URL environment variable
+// Example: REACT_APP_API_BASE_URL=https://api.aipisarz.pl
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://127.0.0.1:8001' 
+    : window.location.hostname === 'aipisarz.pl'
+    ? 'https://api.aipisarz.pl'
+    : `${window.location.protocol}//${window.location.hostname}:8001`);
 
 // API endpoints
 export const API_ENDPOINTS = {

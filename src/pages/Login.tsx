@@ -22,11 +22,18 @@ export const LoginPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({ password }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Login response error:', response.status, errorText);
+        setError(`Server error: ${response.status}. ${errorText}`);
+        return;
+      }
+
       const data = await response.json();
+      console.log('Login response:', data);
 
       if (data.success) {
         setAuthenticated(true);
@@ -36,8 +43,8 @@ export const LoginPage: React.FC = () => {
         setError(data.message || 'Incorrect password');
       }
     } catch (err) {
-      setError('Failed to verify password. Please try again.');
       console.error('Login error:', err);
+      setError(`Failed to verify password: ${err instanceof Error ? err.message : 'Network error'}`);
     } finally {
       setLoading(false);
     }
