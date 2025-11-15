@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { buildApiUrl } from '../config/api';
 import { API_ENDPOINTS } from '../config/api';
-import { apiClient } from '../utils/apiClient';
-import { setToken } from '../utils/auth';
+import { setAuthenticated } from '../utils/auth';
 import './Login.css';
 
 export const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,25 +17,27 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const data = await apiClient.post<{ 
-        success: boolean; 
-        message?: string;
-        access_token?: string;
-        token_type?: string;
-      }>(
-        API_ENDPOINTS.checkPassword,
-        { password }
-      );
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.checkPassword), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      });
 
-      if (data.success && data.access_token) {
-        setToken(data.access_token);
-        // Reload page to access protected routes
-        window.location.href = '/';
+      const data = await response.json();
+
+      if (data.success) {
+        setAuthenticated(true);
+        // Use React Router navigation instead of window.location
+        navigate('/', { replace: true });
       } else {
         setError(data.message || 'Incorrect password');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to verify password. Please try again.');
+      setError('Failed to verify password. Please try again.');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { API_ENDPOINTS } from '../../config/api';
-import { apiClient } from '../../utils/apiClient';
+import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 import './CampaignObjectDetails.css';
 
 interface ThreadMessage {
@@ -129,9 +128,13 @@ export const CampaignObjectDetailsPage: React.FC = () => {
       setError('');
       try {
         // Завантажити деталі об'єкта
-        const result = await apiClient.get<CampaignObjectDetailsResponse>(
-          API_ENDPOINTS.campaignObjectDetails(campaignId, objectId)
-        );
+        const url = buildApiUrl(API_ENDPOINTS.campaignObjectDetails(campaignId, objectId));
+        const response = await fetch(url);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+        const result: CampaignObjectDetailsResponse = await response.json();
         setData(result);
         
         // Якщо є thread_id, завантажити thread
@@ -142,12 +145,18 @@ export const CampaignObjectDetailsPage: React.FC = () => {
         
         if (threadId) {
           try {
-            console.log('DEBUG: Fetching thread for thread_id:', threadId);
-            const threadData = await apiClient.get<EmailThread>(
-              API_ENDPOINTS.emailThread(campaignId, threadId)
-            );
-            console.log('DEBUG: Thread data received:', threadData);
-            setThread(threadData);
+            const threadUrl = buildApiUrl(API_ENDPOINTS.emailThread(campaignId, threadId));
+            console.log('DEBUG: Fetching thread from URL:', threadUrl);
+            const threadResponse = await fetch(threadUrl);
+            console.log('DEBUG: Thread response status:', threadResponse.status);
+            if (threadResponse.ok) {
+              const threadData: EmailThread = await threadResponse.json();
+              console.log('DEBUG: Thread data received:', threadData);
+              setThread(threadData);
+            } else {
+              const errorText = await threadResponse.text();
+              console.error('DEBUG: Thread fetch failed:', errorText);
+            }
           } catch (threadErr) {
             console.warn('Failed to load thread:', threadErr);
           }
@@ -181,13 +190,22 @@ export const CampaignObjectDetailsPage: React.FC = () => {
     setSendError('');
     
     try {
-      await apiClient.post(
-        API_ENDPOINTS.sendReply(campaignId, objectId),
-        {
+      const url = buildApiUrl(API_ENDPOINTS.sendReply(campaignId, objectId));
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           subject: replySubject,
           body: replyBody,
-        }
-      );
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
       
       // Clear form
       setReplySubject('');
@@ -197,10 +215,12 @@ export const CampaignObjectDetailsPage: React.FC = () => {
       if (data?.sent_email?.thread_id || data?.target?.thread_id) {
         const threadId = data.sent_email?.thread_id || data.target?.thread_id;
         if (threadId) {
-          const threadData = await apiClient.get<EmailThread>(
-            API_ENDPOINTS.emailThread(campaignId, threadId)
-          );
-          setThread(threadData);
+          const threadUrl = buildApiUrl(API_ENDPOINTS.emailThread(campaignId, threadId));
+          const threadResponse = await fetch(threadUrl);
+          if (threadResponse.ok) {
+            const threadData: EmailThread = await threadResponse.json();
+            setThread(threadData);
+          }
         }
       }
       

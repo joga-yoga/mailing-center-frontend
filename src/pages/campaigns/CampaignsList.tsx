@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { API_ENDPOINTS } from '../../config/api';
-import { apiClient } from '../../utils/apiClient';
+import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 import './CampaignsList.css';
 
 interface CampaignListItem {
@@ -38,16 +37,24 @@ export const CampaignsListPage: React.FC = () => {
 
   const fetchCampaigns = async () => {
     try {
-      const data = await apiClient.get<CampaignListItem[] | { campaigns: CampaignListItem[] }>(
-        API_ENDPOINTS.campaigns
-      );
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaigns));
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
       
       // Handle different response formats
       let campaignsList: CampaignListItem[] = [];
       if (Array.isArray(data)) {
         campaignsList = data;
-      } else if (data && typeof data === 'object' && 'campaigns' in data) {
+      } else if (data && typeof data === 'object' && Array.isArray(data.campaigns)) {
         campaignsList = data.campaigns;
+      } else if (data && typeof data === 'object') {
+        // If it's a single object, wrap it in an array
+        campaignsList = [data];
       }
       
       setCampaigns(campaignsList);
@@ -66,7 +73,14 @@ export const CampaignsListPage: React.FC = () => {
   const handleDelete = async (campaignId: string) => {
     setDeletingId(campaignId);
     try {
-      await apiClient.delete(API_ENDPOINTS.campaignStatus(campaignId));
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.campaignStatus(campaignId)), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
+      }
 
       setCampaigns((prev) => prev.filter((campaign) => campaign.campaign_id !== campaignId));
       setError('');

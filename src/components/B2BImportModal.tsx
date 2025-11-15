@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { buildApiUrl } from '../config/api';
 import { API_ENDPOINTS } from '../config/api';
-import { apiClient } from '../utils/apiClient';
 import './B2BImportModal.css';
 
 interface ImportResult {
@@ -62,10 +62,16 @@ export const B2BImportModal: React.FC<B2BImportModalProps> = ({ isOpen, onClose 
       formData.append('file', file);
       formData.append('update_existing', updateExisting.toString());
 
-      const data = await apiClient.post<ImportResult>(
-        API_ENDPOINTS.b2bImport,
-        formData
-      );
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.b2bImport), {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Import error');
+      }
 
       setResult(data);
     } catch (err) {

@@ -13,40 +13,34 @@ interface TextareaFieldProps {
   placeholder?: string;
 }
 
-export const TextareaField = React.forwardRef<HTMLTextAreaElement, TextareaFieldProps>(
-  (
-    {
-      label,
-      name,
-      value,
-      onChange,
-      error,
-      hint,
-      required = false,
-      rows = 4,
-      placeholder,
-    },
-    ref
-  ) => {
-    return (
-      <FormField
-        label={label}
-        htmlFor={name}
-        error={error}
-        hint={hint}
-        required={required}
-      >
-        <textarea
-          ref={ref}
-          id={name}
-          name={name}
-          className={`form-control ${error ? 'error' : ''}`}
-          value={value}
-          onChange={onChange}
-          rows={rows}
-          placeholder={placeholder}
-        />
-      </FormField>
-    );
-  }
-);
+export const TextareaField: React.FC<TextareaFieldProps> = ({
+  label,
+  name,
+  value,
+  onChange,
+  error,
+  hint,
+  required = false,
+  rows = 4,
+  placeholder,
+}) => {
+  return (
+    <FormField
+      label={label}
+      htmlFor={name}
+      error={error}
+      hint={hint}
+      required={required}
+    >
+      <textarea
+        id={name}
+        name={name}
+        className={`form-control ${error ? 'error' : ''}`}
+        value={value}
+        onChange={onChange}
+        rows={rows}
+        placeholder={placeholder}
+      />
+    </FormField>
+  );
+};

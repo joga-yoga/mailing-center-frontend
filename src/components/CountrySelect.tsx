@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FormField } from './FormField';
 import './CountrySelect.css';
-import { API_ENDPOINTS } from '../config/api';
-import { apiClient } from '../utils/apiClient';
 
 interface Country {
   code: string;
@@ -21,146 +19,140 @@ interface CountrySelectProps {
   placeholder?: string;
 }
 
-// Country name to code mapping for flags (using common names from database)
-const COUNTRY_NAME_TO_CODE: Record<string, string> = {
-  'United States': 'US',
-  'United Kingdom': 'GB',
-  'Germany': 'DE',
-  'France': 'FR',
-  'Italy': 'IT',
-  'Spain': 'ES',
-  'Poland': 'PL',
-  'Netherlands': 'NL',
-  'Belgium': 'BE',
-  'Austria': 'AT',
-  'Switzerland': 'CH',
-  'Sweden': 'SE',
-  'Norway': 'NO',
-  'Denmark': 'DK',
-  'Finland': 'FI',
-  'Portugal': 'PT',
-  'Ireland': 'IE',
-  'Luxembourg': 'LU',
-  'Greece': 'GR',
-  'Czech Republic': 'CZ',
-  'Hungary': 'HU',
-  'Slovakia': 'SK',
-  'Slovenia': 'SI',
-  'Croatia': 'HR',
-  'Romania': 'RO',
-  'Bulgaria': 'BG',
-  'Estonia': 'EE',
-  'Latvia': 'LV',
-  'Lithuania': 'LT',
-  'Malta': 'MT',
-  'Cyprus': 'CY',
-  'Canada': 'CA',
-  'Australia': 'AU',
-  'New Zealand': 'NZ',
-  'Japan': 'JP',
-  'South Korea': 'KR',
-  'Singapore': 'SG',
-  'Hong Kong': 'HK',
-  'Taiwan': 'TW',
-  'India': 'IN',
-  'Brazil': 'BR',
-  'Mexico': 'MX',
-  'Argentina': 'AR',
-  'Chile': 'CL',
-  'Colombia': 'CO',
-  'Peru': 'PE',
-  'Uruguay': 'UY',
-  'Paraguay': 'PY',
-  'Bolivia': 'BO',
-  'Ecuador': 'EC',
-  'Venezuela': 'VE',
-  'Guyana': 'GY',
-  'Suriname': 'SR',
-  'French Guiana': 'GF',
-  'South Africa': 'ZA',
-  'Egypt': 'EG',
-  'Morocco': 'MA',
-  'Tunisia': 'TN',
-  'Algeria': 'DZ',
-  'Libya': 'LY',
-  'Angola': 'AO',
-  'Mozambique': 'MZ',
-  'Botswana': 'BW',
-  'Zimbabwe': 'ZW',
-  'Namibia': 'NA',
-  'Madagascar': 'MG',
-  'Mauritius': 'MU',
-  'Seychelles': 'SC',
-  'Cape Verde': 'CV',
-  'São Tomé and Príncipe': 'ST',
-  'Guinea-Bissau': 'GW',
-  'Guinea': 'GN',
-  'Sierra Leone': 'SL',
-  'Liberia': 'LR',
-  'Ivory Coast': 'CI',
-  'Mali': 'ML',
-  'Senegal': 'SN',
-  'Gambia': 'GM',
-  'Benin': 'BJ',
-  'Togo': 'TG',
-  'Ghana': 'GH',
-  'Nigeria': 'NG',
-  'Cameroon': 'CM',
-  'Gabon': 'GA',
-  'Republic of the Congo': 'CG',
-  'Democratic Republic of the Congo': 'CD',
-  'Central African Republic': 'CF',
-  'Chad': 'TD',
-  'Niger': 'NE',
-  'Burkina Faso': 'BF',
-  'Mauritania': 'MR',
-  'Western Sahara': 'EH',
-  'Israel': 'IL',
-  'Palestine': 'PS',
-  'Jordan': 'JO',
-  'Lebanon': 'LB',
-  'Syria': 'SY',
-  'Iraq': 'IQ',
-  'Iran': 'IR',
-  'Afghanistan': 'AF',
-  'Pakistan': 'PK',
-  'Nepal': 'NP',
-  'Bhutan': 'BT',
-  'Bangladesh': 'BD',
-  'Sri Lanka': 'LK',
-  'Maldives': 'MV',
-  'Thailand': 'TH',
-  'Malaysia': 'MY',
-  'Indonesia': 'ID',
-  'Philippines': 'PH',
-  'Vietnam': 'VN',
-  'Laos': 'LA',
-  'Cambodia': 'KH',
-  'Myanmar': 'MM',
-  'Brunei': 'BN',
-  'East Timor': 'TL',
-  'China': 'CN',
-  'Mongolia': 'MN',
-  'North Korea': 'KP',
-  'Russia': 'RU',
-  'Ukraine': 'UA',
-  'Belarus': 'BY',
-  'Moldova': 'MD',
-  'Georgia': 'GE',
-  'Armenia': 'AM',
-  'Azerbaijan': 'AZ',
-  'Kazakhstan': 'KZ',
-  'Uzbekistan': 'UZ',
-  'Turkmenistan': 'TM',
-  'Tajikistan': 'TJ',
-  'Kyrgyzstan': 'KG',
-  'Turkey': 'TR',
-};
-
-// Helper function to get country code from name
-const getCountryCode = (countryName: string): string => {
-  return COUNTRY_NAME_TO_CODE[countryName] || countryName.substring(0, 2).toUpperCase();
-};
+const COUNTRIES: Country[] = [
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
+  { code: 'PL', name: 'Poland', flag: '🇵🇱' },
+  { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'BE', name: 'Belgium', flag: '🇧🇪' },
+  { code: 'AT', name: 'Austria', flag: '🇦🇹' },
+  { code: 'CH', name: 'Switzerland', flag: '🇨🇭' },
+  { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
+  { code: 'NO', name: 'Norway', flag: '🇳🇴' },
+  { code: 'DK', name: 'Denmark', flag: '🇩🇰' },
+  { code: 'FI', name: 'Finland', flag: '🇫🇮' },
+  { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
+  { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
+  { code: 'LU', name: 'Luxembourg', flag: '🇱🇺' },
+  { code: 'GR', name: 'Greece', flag: '🇬🇷' },
+  { code: 'CZ', name: 'Czech Republic', flag: '🇨🇿' },
+  { code: 'HU', name: 'Hungary', flag: '🇭🇺' },
+  { code: 'SK', name: 'Slovakia', flag: '🇸🇰' },
+  { code: 'SI', name: 'Slovenia', flag: '🇸🇮' },
+  { code: 'HR', name: 'Croatia', flag: '🇭🇷' },
+  { code: 'RO', name: 'Romania', flag: '🇷🇴' },
+  { code: 'BG', name: 'Bulgaria', flag: '🇧🇬' },
+  { code: 'EE', name: 'Estonia', flag: '🇪🇪' },
+  { code: 'LV', name: 'Latvia', flag: '🇱🇻' },
+  { code: 'LT', name: 'Lithuania', flag: '🇱🇹' },
+  { code: 'MT', name: 'Malta', flag: '🇲🇹' },
+  { code: 'CY', name: 'Cyprus', flag: '🇨🇾' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'HK', name: 'Hong Kong', flag: '🇭🇰' },
+  { code: 'TW', name: 'Taiwan', flag: '🇹🇼' },
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
+  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
+  { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+  { code: 'CL', name: 'Chile', flag: '🇨🇱' },
+  { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
+  { code: 'PE', name: 'Peru', flag: '🇵🇪' },
+  { code: 'UY', name: 'Uruguay', flag: '🇺🇾' },
+  { code: 'PY', name: 'Paraguay', flag: '🇵🇾' },
+  { code: 'BO', name: 'Bolivia', flag: '🇧🇴' },
+  { code: 'EC', name: 'Ecuador', flag: '🇪🇨' },
+  { code: 'VE', name: 'Venezuela', flag: '🇻🇪' },
+  { code: 'GY', name: 'Guyana', flag: '🇬🇾' },
+  { code: 'SR', name: 'Suriname', flag: '🇸🇷' },
+  { code: 'GF', name: 'French Guiana', flag: '🇬🇫' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
+  { code: 'MA', name: 'Morocco', flag: '🇲🇦' },
+  { code: 'TN', name: 'Tunisia', flag: '🇹🇳' },
+  { code: 'DZ', name: 'Algeria', flag: '🇩🇿' },
+  { code: 'LY', name: 'Libya', flag: '🇱🇾' },
+  { code: 'AO', name: 'Angola', flag: '🇦🇴' },
+  { code: 'MZ', name: 'Mozambique', flag: '🇲🇿' },
+  { code: 'BW', name: 'Botswana', flag: '🇧🇼' },
+  { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' },
+  { code: 'NA', name: 'Namibia', flag: '🇳🇦' },
+  { code: 'MG', name: 'Madagascar', flag: '🇲🇬' },
+  { code: 'MU', name: 'Mauritius', flag: '🇲🇺' },
+  { code: 'SC', name: 'Seychelles', flag: '🇸🇨' },
+  { code: 'CV', name: 'Cape Verde', flag: '🇨🇻' },
+  { code: 'ST', name: 'São Tomé and Príncipe', flag: '🇸🇹' },
+  { code: 'GW', name: 'Guinea-Bissau', flag: '🇬🇼' },
+  { code: 'GN', name: 'Guinea', flag: '🇬🇳' },
+  { code: 'SL', name: 'Sierra Leone', flag: '🇸🇱' },
+  { code: 'LR', name: 'Liberia', flag: '🇱🇷' },
+  { code: 'CI', name: 'Ivory Coast', flag: '🇨🇮' },
+  { code: 'ML', name: 'Mali', flag: '🇲🇱' },
+  { code: 'SN', name: 'Senegal', flag: '🇸🇳' },
+  { code: 'GM', name: 'Gambia', flag: '🇬🇲' },
+  { code: 'BJ', name: 'Benin', flag: '🇧🇯' },
+  { code: 'TG', name: 'Togo', flag: '🇹🇬' },
+  { code: 'GH', name: 'Ghana', flag: '🇬🇭' },
+  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
+  { code: 'CM', name: 'Cameroon', flag: '🇨🇲' },
+  { code: 'GA', name: 'Gabon', flag: '🇬🇦' },
+  { code: 'CG', name: 'Republic of the Congo', flag: '🇨🇬' },
+  { code: 'CD', name: 'Democratic Republic of the Congo', flag: '🇨🇩' },
+  { code: 'CF', name: 'Central African Republic', flag: '🇨🇫' },
+  { code: 'TD', name: 'Chad', flag: '🇹🇩' },
+  { code: 'NE', name: 'Niger', flag: '🇳🇪' },
+  { code: 'BF', name: 'Burkina Faso', flag: '🇧🇫' },
+  { code: 'MR', name: 'Mauritania', flag: '🇲🇷' },
+  { code: 'EH', name: 'Western Sahara', flag: '🇪🇭' },
+  { code: 'IL', name: 'Israel', flag: '🇮🇱' },
+  { code: 'PS', name: 'Palestine', flag: '🇵🇸' },
+  { code: 'JO', name: 'Jordan', flag: '🇯🇴' },
+  { code: 'LB', name: 'Lebanon', flag: '🇱🇧' },
+  { code: 'SY', name: 'Syria', flag: '🇸🇾' },
+  { code: 'IQ', name: 'Iraq', flag: '🇮🇶' },
+  { code: 'IR', name: 'Iran', flag: '🇮🇷' },
+  { code: 'AF', name: 'Afghanistan', flag: '🇦🇫' },
+  { code: 'PK', name: 'Pakistan', flag: '🇵🇰' },
+  { code: 'NP', name: 'Nepal', flag: '🇳🇵' },
+  { code: 'BT', name: 'Bhutan', flag: '🇧🇹' },
+  { code: 'BD', name: 'Bangladesh', flag: '🇧🇩' },
+  { code: 'LK', name: 'Sri Lanka', flag: '🇱🇰' },
+  { code: 'MV', name: 'Maldives', flag: '🇲🇻' },
+  { code: 'TH', name: 'Thailand', flag: '🇹🇭' },
+  { code: 'MY', name: 'Malaysia', flag: '🇲🇾' },
+  { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
+  { code: 'PH', name: 'Philippines', flag: '🇵🇭' },
+  { code: 'VN', name: 'Vietnam', flag: '🇻🇳' },
+  { code: 'LA', name: 'Laos', flag: '🇱🇦' },
+  { code: 'KH', name: 'Cambodia', flag: '🇰🇭' },
+  { code: 'MM', name: 'Myanmar', flag: '🇲🇲' },
+  { code: 'BN', name: 'Brunei', flag: '🇧🇳' },
+  { code: 'TL', name: 'East Timor', flag: '🇹🇱' },
+  { code: 'CN', name: 'China', flag: '🇨🇳' },
+  { code: 'MN', name: 'Mongolia', flag: '🇲🇳' },
+  { code: 'KP', name: 'North Korea', flag: '🇰🇵' },
+  { code: 'RU', name: 'Russia', flag: '🇷🇺' },
+  { code: 'UA', name: 'Ukraine', flag: '🇺🇦' },
+  { code: 'BY', name: 'Belarus', flag: '🇧🇾' },
+  { code: 'MD', name: 'Moldova', flag: '🇲🇩' },
+  { code: 'GE', name: 'Georgia', flag: '🇬🇪' },
+  { code: 'AM', name: 'Armenia', flag: '🇦🇲' },
+  { code: 'AZ', name: 'Azerbaijan', flag: '🇦🇿' },
+  { code: 'KZ', name: 'Kazakhstan', flag: '🇰🇿' },
+  { code: 'UZ', name: 'Uzbekistan', flag: '🇺🇿' },
+  { code: 'TM', name: 'Turkmenistan', flag: '🇹🇲' },
+  { code: 'TJ', name: 'Tajikistan', flag: '🇹🇯' },
+  { code: 'KG', name: 'Kyrgyzstan', flag: '🇰🇬' },
+  { code: 'TR', name: 'Turkey', flag: '🇹🇷' },
+];
 
 export const CountrySelect: React.FC<CountrySelectProps> = ({
   label,
@@ -175,64 +167,39 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [countries, setCountries] = useState<Country[]>([]);
   const [filteredCountries, setFilteredCountries] = useState<Country[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Fetch countries from API
-  useEffect(() => {
-    const fetchCountries = async () => {
-      setIsLoading(true);
-      try {
-        const data = await apiClient.get<{ countries: string[] }>(API_ENDPOINTS.b2bStats);
-        const countryNames: string[] = data.countries || [];
-        const countriesList: Country[] = countryNames
-          .sort((a, b) => a.localeCompare(b))
-          .map(name => ({
-            name,
-            code: getCountryCode(name),
-            flag: '', // Flag icon is handled via CSS class
-          }));
-        setCountries(countriesList);
-        setFilteredCountries(countriesList);
-      } catch (err) {
-        console.error('Failed to fetch countries:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCountries();
-  }, []);
 
   // Filter and sort countries
   useEffect(() => {
-    if (isLoading) return;
-    
-    let filtered = countries.filter(country =>
+    let filtered = COUNTRIES.filter(country =>
       country.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // De-duplicate by country name
-    const uniqueByName = Array.from(new Map(filtered.map(c => [c.name, c])).values());
+    // De-duplicate by country code in case of accidental duplicates
+    const uniqueByCode = Array.from(new Map(filtered.map(c => [c.code, c])).values());
 
     // Sort alphabetically
-    uniqueByName.sort((a, b) => a.name.localeCompare(b.name));
+    uniqueByCode.sort((a, b) => a.name.localeCompare(b.name));
 
-    setFilteredCountries(uniqueByName);
-  }, [searchTerm, countries, isLoading]);
+    setFilteredCountries(uniqueByCode);
+  }, [searchTerm]);
 
-  // Find selected country (by name)
+  // Initialize filtered countries on mount
   useEffect(() => {
-    if (isLoading) return;
-    
+    const uniqueAll = Array.from(new Map(COUNTRIES.map(c => [c.code, c])).values());
+    setFilteredCountries(uniqueAll.sort((a, b) => a.name.localeCompare(b.name)));
+  }, []);
+
+  // Find selected country (by name or code for backward compatibility)
+  useEffect(() => {
     if (value) {
-      const country = countries.find(c => c.name === value || c.code === value);
+      const country = COUNTRIES.find(c => c.name === value || c.code === value);
       setSelectedCountry(country || null);
     } else {
       setSelectedCountry(null);
     }
-  }, [value, countries, isLoading]);
+  }, [value]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -297,25 +264,20 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
               />
             </div>
             <div className="country-options">
-              {isLoading ? (
-                <div className="country-no-results">
-                  Loading countries...
+              {filteredCountries.map((country) => (
+                <div
+                  key={country.code}
+                  className="country-option"
+                  onClick={() => handleSelect(country)}
+                >
+                  <span className={`country-flag fi fi-${country.code.toLowerCase()}`}></span>
+                  <span className="country-name">{country.name}</span>
                 </div>
-              ) : filteredCountries.length === 0 ? (
+              ))}
+              {filteredCountries.length === 0 && (
                 <div className="country-no-results">
                   No countries found
                 </div>
-              ) : (
-                filteredCountries.map((country) => (
-                  <div
-                    key={country.name}
-                    className="country-option"
-                    onClick={() => handleSelect(country)}
-                  >
-                    <span className={`country-flag fi fi-${country.code.toLowerCase()}`}></span>
-                    <span className="country-name">{country.name}</span>
-                  </div>
-                ))
               )}
             </div>
           </div>

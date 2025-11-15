@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_ENDPOINTS } from '../../config/api';
-import { apiClient } from '../../utils/apiClient';
+import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 import './SenderAccounts.css';
 
 type SenderAccount = {
@@ -91,15 +90,26 @@ export const SenderAccountsPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sendersData, urlsData] = await Promise.all([
-        apiClient.get<SenderAccount[]>(`${API_ENDPOINTS.senderAccounts}?active_only=false`),
-        apiClient.get<MailApiUrl[]>(`${API_ENDPOINTS.mailApiUrls}?active_only=false`),
+      const [sendersRes, urlsRes] = await Promise.all([
+        fetch(buildApiUrl(`${API_ENDPOINTS.senderAccounts}?active_only=false`)),
+        fetch(buildApiUrl(`${API_ENDPOINTS.mailApiUrls}?active_only=false`)),
       ]);
 
+      if (!sendersRes.ok) {
+        const err = await sendersRes.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || `Failed to load senders (${sendersRes.status})`);
+      }
+      if (!urlsRes.ok) {
+        const err = await urlsRes.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || `Failed to load mail API URLs (${urlsRes.status})`);
+      }
+
+      const sendersData: SenderAccount[] = await sendersRes.json();
       const normalizedSenders = sendersData.map((sender) => ({
         ...sender,
         selenium_required: Boolean(sender.selenium_required),
       }));
+      const urlsData: MailApiUrl[] = await urlsRes.json();
 
       setSenders(normalizedSenders);
       setMailApiUrls(urlsData);
@@ -172,11 +182,20 @@ export const SenderAccountsPage: React.FC = () => {
         is_active: formData.is_active,
       };
 
-      const created = await apiClient.post<SenderAccount>(
-        API_ENDPOINTS.senderAccounts,
-        payload
-      );
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.senderAccounts), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.detail || errorBody.message || `Failed to create sender (${response.status})`);
+      }
+
+      const created: SenderAccount = await response.json();
       created.selenium_required = Boolean(created.selenium_required);
       setSenders((prev) => [created, ...prev]);
       resetForm();
@@ -194,7 +213,14 @@ export const SenderAccountsPage: React.FC = () => {
     }
     setDeletingId(senderToDelete.id);
     try {
-      await apiClient.delete(`${API_ENDPOINTS.senderAccounts}/${senderToDelete.id}`);
+      const response = await fetch(buildApiUrl(`${API_ENDPOINTS.senderAccounts}/${senderToDelete.id}`), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.detail || errorBody.message || `Failed to delete sender (${response.status})`);
+      }
 
       setSenders((prev) => prev.filter((sender) => sender.id !== senderToDelete.id));
       setSenderToDelete(null);

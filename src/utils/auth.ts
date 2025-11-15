@@ -1,49 +1,30 @@
 // Authentication utilities
 
-const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_SESSION_KEY = 'site_authenticated';
 
 /**
  * Check if user is authenticated
  */
 export const isAuthenticated = (): boolean => {
-  const token = getToken();
-  if (!token) {
-    return false;
-  }
-  
-  // Check if token is expired
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const exp = payload.exp;
-    if (exp && Date.now() >= exp * 1000) {
-      clearAuthentication();
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
+  return sessionStorage.getItem(AUTH_SESSION_KEY) === 'true';
 };
 
 /**
- * Get authentication token
+ * Set authentication status
  */
-export const getToken = (): string | null => {
-  return sessionStorage.getItem(AUTH_TOKEN_KEY);
-};
-
-/**
- * Set authentication token
- */
-export const setToken = (token: string): void => {
-  sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+export const setAuthenticated = (authenticated: boolean): void => {
+  if (authenticated) {
+    sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
+  } else {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+  }
 };
 
 /**
  * Clear authentication
  */
 export const clearAuthentication = (): void => {
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
 };
 
 
