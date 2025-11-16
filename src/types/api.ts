@@ -5,6 +5,7 @@ export interface CampaignSetupRequest {
   emails?: string[]; // Варіант 1: список email
   country?: string; // Варіант 2: фільтри БД
   object_type?: string; // Варіант 2: фільтри БД
+  included_place_ids?: string[]; // Додатково: які B2B-об'єкти з фільтрів включати
 
   // Обов'язкові генераційні підказки
   subject_prompt: string;

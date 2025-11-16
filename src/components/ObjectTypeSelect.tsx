@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FormField } from './FormField';
 import './ObjectTypeSelect.css';
+import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 
 interface ObjectTypeOption {
   value: string;
@@ -17,9 +18,11 @@ interface ObjectTypeSelectProps {
   hint?: string;
   required?: boolean;
   placeholder?: string;
+  selectedCountry?: string; // for filtering types by country
 }
 
-const OBJECT_TYPE_OPTIONS: ObjectTypeOption[] = [
+// Fallback defaults to show if API isn't available
+const DEFAULT_OBJECT_TYPE_OPTIONS: ObjectTypeOption[] = [
   { value: 'yoga_studio', label: 'Yoga Studio', sendValue: 'yoga_studio' },
   { value: 'retreat_center', label: 'Retreat Center', sendValue: 'retreat_center' },
   { value: 'yoga_retreat', label: 'Yoga Retreat', sendValue: 'yoga_retreat' },
@@ -34,20 +37,67 @@ export const ObjectTypeSelect: React.FC<ObjectTypeSelectProps> = ({
   hint,
   required = false,
   placeholder = "Select object type...",
+  selectedCountry,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<ObjectTypeOption | null>(null);
+  const [options, setOptions] = useState<ObjectTypeOption[]>(DEFAULT_OBJECT_TYPE_OPTIONS);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load object types from API (stats.types) and merge with defaults
+  useEffect(() => {
+    let isMounted = true;
+    const loadTypes = async () => {
+      try {
+        const base = API_ENDPOINTS.b2bStats;
+        const qs = new URLSearchParams();
+        if (selectedCountry) qs.set('country', selectedCountry);
+        qs.set('has_email', 'true');
+        const url = buildApiUrl(qs.toString() ? `${base}?${qs.toString()}` : base);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to load types: ${res.status}`);
+        const data = await res.json();
+        const types: string[] = Array.isArray(data?.types) ? data.types : [];
+        // Map to options; label: Title Case
+        const apiOptions: ObjectTypeOption[] = types.map((t) => {
+          const label = t
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          return { value: t, label, sendValue: t };
+        });
+        // If a country is selected, use API list only.
+        // If no country filter, merge defaults with API.
+        let finalOptions: ObjectTypeOption[];
+        if (selectedCountry) {
+          finalOptions = apiOptions;
+        } else {
+          const mergedMap = new Map<string, ObjectTypeOption>();
+          [...DEFAULT_OBJECT_TYPE_OPTIONS, ...apiOptions].forEach((opt) => {
+            if (!mergedMap.has(opt.value)) mergedMap.set(opt.value, opt);
+          });
+          finalOptions = Array.from(mergedMap.values());
+        }
+        finalOptions.sort((a, b) => a.label.localeCompare(b.label));
+        if (isMounted) setOptions(finalOptions);
+      } catch (_e) {
+        // Keep defaults on error
+      }
+    };
+    loadTypes();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCountry]);
 
   // Find selected option
   useEffect(() => {
     if (value) {
-      const option = OBJECT_TYPE_OPTIONS.find(o => o.sendValue === value);
+      const option = options.find(o => o.sendValue === value);
       setSelectedOption(option || null);
     } else {
       setSelectedOption(null);
     }
-  }, [value]);
+  }, [value, options]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -91,7 +141,7 @@ export const ObjectTypeSelect: React.FC<ObjectTypeSelectProps> = ({
 
         {isOpen && (
           <div className="object-type-dropdown">
-            {OBJECT_TYPE_OPTIONS.map((option) => (
+            {options.map((option) => (
               <div
                 key={option.value}
                 className="object-type-option"

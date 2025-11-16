@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FormField } from './FormField';
 import './CountrySelect.css';
+import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 
 interface Country {
   code: string;
@@ -17,6 +18,7 @@ interface CountrySelectProps {
   hint?: string;
   required?: boolean;
   placeholder?: string;
+  selectedObjectType?: string; // for filtering countries by object type
 }
 
 const COUNTRIES: Country[] = [
@@ -163,16 +165,54 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   hint,
   required = false,
   placeholder = "Select country...",
+  selectedObjectType,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCountries, setFilteredCountries] = useState<Country[]>([]);
+  const [allowedCountryNames, setAllowedCountryNames] = useState<Set<string> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load allowed countries from API (all when no type; filtered when type selected)
+  useEffect(() => {
+    let isMounted = true;
+    const loadCountries = async () => {
+      try {
+        const base = API_ENDPOINTS.b2bStats;
+        const qs = new URLSearchParams();
+        if (selectedObjectType) {
+          qs.set('object_type', selectedObjectType);
+        }
+        qs.set('has_email', 'true');
+        const url = buildApiUrl(qs.toString() ? `${base}?${qs.toString()}` : base);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to load countries: ${res.status}`);
+        const data = await res.json();
+        const names: string[] = Array.isArray(data?.countries) ? data.countries : [];
+        if (isMounted) setAllowedCountryNames(new Set(names));
+      } catch (_e) {
+        if (isMounted) setAllowedCountryNames(null);
+      }
+    };
+    loadCountries();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedObjectType]);
 
   // Filter and sort countries
   useEffect(() => {
-    let filtered = COUNTRIES.filter(country =>
+    let base = COUNTRIES;
+    if (allowedCountryNames) {
+      const allowed = base.filter(c => allowedCountryNames.has(c.name));
+      // Ensure currently selected remains visible even if not allowed (avoid sudden disappearance)
+      if (selectedCountry && !allowed.some(c => c.name === selectedCountry.name)) {
+        allowed.unshift(selectedCountry);
+      }
+      base = allowed;
+    }
+    let filtered = base.filter(country =>
       country.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -183,7 +223,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
     uniqueByCode.sort((a, b) => a.name.localeCompare(b.name));
 
     setFilteredCountries(uniqueByCode);
-  }, [searchTerm]);
+  }, [searchTerm, allowedCountryNames]);
 
   // Initialize filtered countries on mount
   useEffect(() => {
@@ -199,7 +239,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
     } else {
       setSelectedCountry(null);
     }
-  }, [value]);
+  }, [value, allowedCountryNames, name, onChange]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

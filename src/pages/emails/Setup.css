@@ -1,1 +1,35 @@
+/* Filters row alignment */
+.filters-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+/* Clear button aligned with inputs' control height */
+.clear-btn {
+  align-self: flex-end;
+  height: 38px;
+  padding: 0 12px;
+  line-height: 38px;
+}
+
+/* Actions under filters */
+.filters-actions {
+  margin-top: 8px;
+}
+
+/* Objects preview block */
+.objects-preview {
+  margin-top: 16px;
+}
+.objects-preview h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+.objects-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
  

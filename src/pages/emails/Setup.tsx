@@ -36,6 +36,13 @@ export const EmailsSetupPage: React.FC = () => {
   const [senderAccountsLoading, setSenderAccountsLoading] = useState(false);
   const [senderAccountsError, setSenderAccountsError] = useState<string>('');
   const [selectedSenderIds, setSelectedSenderIds] = useState<string[]>([]);
+  // B2B objects preview (UI selection + delete)
+  type B2BItem = { place_id: string; name: string; email?: string | null };
+  const [objects, setObjects] = useState<B2BItem[]>([]);
+  const [selectedObjects, setSelectedObjects] = useState<Record<string, boolean>>({});
+  const [objectToDelete, setObjectToDelete] = useState<B2BItem | null>(null);
+  const [deletingPlaceId, setDeletingPlaceId] = useState<string | null>(null);
+  const [objectsError, setObjectsError] = useState<string>('');
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, setError, clearErrors } = useForm<CampaignSetupRequest>({});
 
@@ -110,6 +117,7 @@ export const EmailsSetupPage: React.FC = () => {
       setMatchingCount(null);
       setMatchingCountError('');
       setMatchingCountLoading(false);
+      setObjects([]); // clear objects when filters incomplete
       return;
     }
 
@@ -146,6 +154,67 @@ export const EmailsSetupPage: React.FC = () => {
 
     return () => {
       cancelled = true;
+    };
+  }, [recipientMode, watchedCountry, watchedObjectType]);
+
+  // Load real B2B objects list (limited) for preview when filters are chosen
+  React.useEffect(() => {
+    if (recipientMode !== 'filters' || !watchedCountry || !watchedObjectType) {
+      setObjects([]);
+      setSelectedObjects({});
+      return;
+    }
+    let aborted = false;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const url = buildApiUrl(API_ENDPOINTS.b2bSearch);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: null,
+            type: watchedObjectType,
+            country: watchedCountry,
+            has_email: true
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`Failed to load objects: ${res.status}`);
+        const data = await res.json();
+        const items: B2BItem[] = Array.isArray(data?.items)
+          ? data.items.map((it: any) => ({ place_id: it.place_id, name: it.name || it.place_id, email: it.email }))
+          : [];
+        if (!aborted) {
+          setObjects(items);
+          // Keep existing selections; initialize missing as false
+          setSelectedObjects(prev => {
+            const next = { ...prev };
+            // If this is the first load (no previous selection), select all by default
+            if (Object.keys(prev).length === 0) {
+              items.forEach(it => {
+                next[it.place_id] = true;
+              });
+              return next;
+            }
+            // Otherwise preserve existing, and mark new items as selected by default
+            items.forEach(it => {
+              if (next[it.place_id] === undefined) {
+                next[it.place_id] = true;
+              }
+            });
+            return next;
+          });
+        }
+      } catch (_e) {
+        if (!aborted) {
+          setObjects([]);
+        }
+      }
+    })();
+    return () => {
+      aborted = true;
+      controller.abort();
     };
   }, [recipientMode, watchedCountry, watchedObjectType]);
 
@@ -292,6 +361,21 @@ export const EmailsSetupPage: React.FC = () => {
         data.emails = parseEmails(emailsText);
       }
 
+      // When using filters, pass list of explicitly included B2B place_ids based on checkboxes
+      if (recipientMode === 'filters') {
+        const includedIds = objects
+          .filter(obj => selectedObjects[obj.place_id])
+          .map(obj => obj.place_id);
+
+        if (includedIds.length === 0) {
+          setSubmitError('Select at least one B2B object or adjust filters');
+          setIsSubmitting(false);
+          return;
+        }
+
+        data.included_place_ids = includedIds;
+      }
+
       // Frontend validation
       if (recipientMode === 'emails' && (!data.emails || data.emails.length === 0)) {
         setSubmitError('At least one email address is required');
@@ -358,7 +442,37 @@ export const EmailsSetupPage: React.FC = () => {
     }
   };
 
+  const handleDeleteObject = async () => {
+    if (!objectToDelete) return;
+    setDeletingPlaceId(objectToDelete.place_id);
+    setObjectsError('');
+    try {
+      const response = await fetch(
+        buildApiUrl(`/api/b2b/${encodeURIComponent(objectToDelete.place_id)}`),
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.detail || errorBody.message || `Failed to delete object (${response.status})`);
+      }
+
+      setObjects(prev => prev.filter(o => o.place_id !== objectToDelete.place_id));
+      setSelectedObjects(prev => {
+        const next = { ...prev };
+        delete next[objectToDelete.place_id];
+        return next;
+      });
+      setMatchingCount(prev => (prev !== null ? Math.max(0, prev - 1) : prev));
+      setObjectToDelete(null);
+    } catch (err) {
+      setObjectsError(err instanceof Error ? err.message : 'Failed to delete object');
+    } finally {
+      setDeletingPlaceId(null);
+    }
+  };
+
   return (
+    <>
     <div className="container">
       <div className="emails-setup-page narrow-container">
       <h1>Email Campaign Setup</h1>
@@ -422,7 +536,7 @@ export const EmailsSetupPage: React.FC = () => {
 
           {recipientMode === 'filters' && (
             <>
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div className="filters-row">
                 <div style={{ flex: 1 }}>
                   <CountrySelect
                     label="Country"
@@ -432,6 +546,7 @@ export const EmailsSetupPage: React.FC = () => {
                     error={errors.country?.message}
                     required={recipientMode === 'filters'}
                     placeholder="Select country..."
+                    selectedObjectType={watch('object_type') || ''}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -442,52 +557,111 @@ export const EmailsSetupPage: React.FC = () => {
                     onChange={(e) => setValue('object_type', e.target.value)}
                     error={errors.object_type?.message}
                     required={recipientMode === 'filters'}
+                    placeholder="Select object type..."
+                    selectedCountry={watch('country') || ''}
                   />
                 </div>
               </div>
-              {watchedCountry && watchedObjectType && (
-                <div
-                  style={{
-                    marginTop: '10px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: matchingCountError
-                      ? '#dc3545'
-                      : matchingCountLoading
-                        ? '#0d6efd'
-                        : matchingCount === 0
-                          ? '#dc3545'
-                          : '#0f5132',
-                    backgroundColor: matchingCountError
-                      ? 'rgba(220, 53, 69, 0.12)'
-                      : matchingCountLoading
-                        ? 'rgba(13, 110, 253, 0.12)'
-                        : matchingCount === 0
-                          ? 'rgba(220, 53, 69, 0.12)'
-                          : 'rgba(13, 110, 253, 0.1)',
-                    borderRadius: '6px',
-                    padding: '10px 12px',
+              <div className="filters-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue('country', '');
+                    setValue('object_type', '');
+                    setObjects([]);
+                    setSelectedObjects({});
                   }}
+                  className="button button-secondary clear-btn"
+                  title="Clear country and object type"
                 >
-                  {matchingCountError
-                    ? matchingCountError
-                    : matchingCountLoading
-                      ? 'Counting matching B2B objects...'
-                      : (
-                        <>
-                          Found{' '}
-                          <span
+                  Clear
+                </button>
+              </div>
+
+              {/* Objects list (UI only; clickable checkboxes, no side effects) */}
+              {(watchedCountry && watchedObjectType) && (
+                <div className="objects-preview">
+                  <h4 style={{ marginBottom: '10px' }}>
+                    Found{' '}
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color:
+                          matchingCountError
+                            ? '#dc3545'
+                            : (matchingCountLoading
+                              ? '#0d6efd'
+                              : (matchingCount === 0 ? '#dc3545' : '#0b5ed7')),
+                      }}
+                    >
+                      {matchingCountLoading ? '...' : (matchingCount ?? 0)}
+                    </span>{' '}
+                    B2B objects with email for the selected filters
+                  </h4>
+
+                  {matchingCountError && (
+                    <div style={{ color: '#dc3545', fontSize: '14px', marginBottom: '8px' }}>
+                      {matchingCountError}
+                    </div>
+                  )}
+
+                  {objectsError && (
+                    <div style={{ color: '#dc3545', fontSize: '14px', marginBottom: '8px' }}>
+                      {objectsError}
+                    </div>
+                  )}
+
+                  {objects.length > 0 && (
+                    <div className="objects-box">
+                      {objects.map((obj) => (
+                        <div
+                          key={obj.place_id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '10px',
+                            padding: '8px 10px',
+                            borderBottom: '1px solid #eee',
+                          }}
+                        >
+                          <label
                             style={{
-                              fontWeight: 700,
-                              fontSize: '15px',
-                              color: matchingCount === 0 ? '#dc3545' : '#0b5ed7',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              cursor: 'pointer',
+                              flex: 1,
                             }}
                           >
-                            {matchingCount ?? 0}
-                          </span>{' '}
-                          B2B objects with email for the selected filters
-                        </>
-                        )}
+                            <input
+                              type="checkbox"
+                              checked={!!selectedObjects[obj.place_id]}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedObjects(prev => ({ ...prev, [obj.place_id]: checked }));
+                              }}
+                              style={{ width: '16px', height: '16px' }}
+                            />
+                            <span>
+                              {obj.name || obj.place_id}
+                              {obj.email ? <span style={{ color: '#6c757d' }}> ({obj.email})</span> : null}
+                            </span>
+                          </label>
+
+                          <button
+                            type="button"
+                            className="delete-btn"
+                            style={{ marginLeft: '8px', whiteSpace: 'nowrap' }}
+                            onClick={() => setObjectToDelete(obj)}
+                            disabled={deletingPlaceId === obj.place_id}
+                          >
+                            {deletingPlaceId === obj.place_id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -780,5 +954,40 @@ export const EmailsSetupPage: React.FC = () => {
       </form>
       </div>
     </div>
+
+    {objectToDelete && (
+      <div className="modal-overlay">
+        <div className="modal-content">
+          <h3>Delete B2B object</h3>
+          <p>
+            Are you sure you want to delete object{' '}
+            <strong>
+              {objectToDelete?.name || objectToDelete?.place_id}
+              {objectToDelete?.email ? ` (${objectToDelete.email})` : ''}
+            </strong>
+            ? This action cannot be undone.
+          </p>
+          <div className="modal-buttons">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => setObjectToDelete(null)}
+              disabled={Boolean(deletingPlaceId)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="delete-btn"
+              onClick={handleDeleteObject}
+              disabled={Boolean(deletingPlaceId)}
+            >
+              {deletingPlaceId ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
