@@ -217,6 +217,10 @@
   grid-template-columns: 1fr 1fr 1fr;
 }
 
+.status-layout.columns-4 {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
 .status-col {
   display: flex;
   flex-direction: column;

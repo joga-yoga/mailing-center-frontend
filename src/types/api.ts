@@ -72,6 +72,10 @@ export interface CampaignStatusResponse {
   daily_limit: number | null;
   timezone: string | null;
   
+  // Work hours
+  work_start_hour?: number;
+  work_end_hour?: number;
+  
   // Statistics
   statistics: {
     total: number;     // Total emails to send

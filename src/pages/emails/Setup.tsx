@@ -43,6 +43,9 @@ export const EmailsSetupPage: React.FC = () => {
   const [objectToDelete, setObjectToDelete] = useState<B2BItem | null>(null);
   const [deletingPlaceId, setDeletingPlaceId] = useState<string | null>(null);
   const [objectsError, setObjectsError] = useState<string>('');
+  const [availableTimezones, setAvailableTimezones] = useState<string[]>([]);
+  const [timezonesLoading, setTimezonesLoading] = useState(false);
+  const [selectedTimezone, setSelectedTimezone] = useState<string>('');
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, setError, clearErrors } = useForm<CampaignSetupRequest>({});
 
@@ -157,6 +160,67 @@ export const EmailsSetupPage: React.FC = () => {
     };
   }, [recipientMode, watchedCountry, watchedObjectType]);
 
+  // Helper function to extract timezone name from formatted string like "UTC+01:00 (Europe/Warsaw)"
+  const extractTimezoneName = (formatted: string): string => {
+    const match = formatted.match(/\(([^)]+)\)/);
+    return match ? match[1] : formatted;
+  };
+
+  // Load timezones for selected country (only when using filters mode)
+  React.useEffect(() => {
+    if (recipientMode !== 'filters' || !watchedCountry) {
+      setAvailableTimezones([]);
+      setSelectedTimezone('');
+      setValue('timezone', '');
+      return;
+    }
+
+    let cancelled = false;
+    setTimezonesLoading(true);
+    
+    const fetchTimezones = async () => {
+      try {
+        const url = buildApiUrl(API_ENDPOINTS.timezonesByCountry(watchedCountry));
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Failed to load timezones: ${res.status}`);
+        }
+        const data = await res.json();
+        const timezones: string[] = Array.isArray(data?.timezones) ? data.timezones : [];
+        
+        if (!cancelled) {
+          setAvailableTimezones(timezones);
+          // Auto-select first timezone if available (default selection)
+          if (timezones.length > 0) {
+            const firstTz = timezones[0];
+            const tzName = extractTimezoneName(firstTz);
+            setSelectedTimezone(firstTz); // Display formatted
+            setValue('timezone', tzName); // Save only name
+          } else {
+            setSelectedTimezone('');
+            setValue('timezone', '');
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setAvailableTimezones([]);
+          setSelectedTimezone('');
+          setValue('timezone', '');
+        }
+      } finally {
+        if (!cancelled) {
+          setTimezonesLoading(false);
+        }
+      }
+    };
+
+    fetchTimezones();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [recipientMode, watchedCountry, setValue]);
+
   // Load real B2B objects list (limited) for preview when filters are chosen
   React.useEffect(() => {
     if (recipientMode !== 'filters' || !watchedCountry || !watchedObjectType) {
@@ -242,8 +306,12 @@ export const EmailsSetupPage: React.FC = () => {
     if (mode === 'emails') {
       setValue('country', '');
       setValue('object_type', '');
+      setAvailableTimezones([]);
+      setSelectedTimezone('');
+      // Keep timezone value if it was set in filters mode (user can still edit it in emails mode)
     } else {
       setValue('emails', []);
+      // Timezone will be fetched when country is selected
     }
   };
 
@@ -548,6 +616,74 @@ export const EmailsSetupPage: React.FC = () => {
                     placeholder="Select country..."
                     selectedObjectType={watch('object_type') || ''}
                   />
+                  {/* Timezone selection below country select */}
+                  {watchedCountry && (
+                    <div style={{ marginTop: '12px' }}>
+                      {timezonesLoading && (
+                        <div style={{ color: '#0d6efd', fontSize: '14px', marginBottom: '8px' }}>
+                          Loading timezones...
+                        </div>
+                      )}
+                      {!timezonesLoading && availableTimezones.length === 0 && watchedCountry && (
+                        <div style={{ color: '#6c757d', fontSize: '14px', marginBottom: '8px' }}>
+                          No timezones found for this country
+                        </div>
+                      )}
+                      {!timezonesLoading && availableTimezones.length > 0 && (
+                        <div style={{ marginBottom: '8px' }}>
+                          <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#212529' }}>
+                            Select Timezone:
+                          </label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {availableTimezones.map((tzFormatted) => {
+                              const tzName = extractTimezoneName(tzFormatted);
+                              return (
+                                <label
+                                  key={tzFormatted}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    fontSize: '14px',
+                                    cursor: 'pointer',
+                                    padding: '6px 8px',
+                                    borderRadius: '4px',
+                                    backgroundColor: selectedTimezone === tzFormatted ? '#e7f3ff' : 'transparent',
+                                    transition: 'background-color 0.2s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (selectedTimezone !== tzFormatted) {
+                                      e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (selectedTimezone !== tzFormatted) {
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                    }
+                                  }}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="timezone-select"
+                                    value={tzFormatted}
+                                    checked={selectedTimezone === tzFormatted}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const tzNameValue = extractTimezoneName(value);
+                                      setSelectedTimezone(value); // Display formatted
+                                      setValue('timezone', tzNameValue); // Save only name
+                                    }}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <span>{tzFormatted}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <ObjectTypeSelect
@@ -570,6 +706,9 @@ export const EmailsSetupPage: React.FC = () => {
                     setValue('object_type', '');
                     setObjects([]);
                     setSelectedObjects({});
+                    setAvailableTimezones([]);
+                    setSelectedTimezone('');
+                    setValue('timezone', '');
                   }}
                   className="button button-secondary clear-btn"
                   title="Clear country and object type"
@@ -825,14 +964,16 @@ export const EmailsSetupPage: React.FC = () => {
                 {...register('daily_limit', { valueAsNumber: true, min: 1 })}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Timezone (+2 or -2)"
-                {...register('timezone')}
-              />
-            </div>
+            {recipientMode === 'emails' && (
+              <div style={{ flex: 1 }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Timezone (+2 or -2)"
+                  {...register('timezone')}
+                />
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: '20px' }}>

@@ -33,6 +33,7 @@ export const API_ENDPOINTS = {
     });
     return `/api/b2b/count/?${params.toString()}`;
   },
+  timezonesByCountry: (countryName: string) => `/api/timezones/${encodeURIComponent(countryName)}`,
 };
 
 // Helper function to build full URL

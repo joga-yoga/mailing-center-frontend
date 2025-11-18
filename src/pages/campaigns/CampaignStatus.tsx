@@ -15,6 +15,7 @@ export const CampaignStatusPage: React.FC = () => {
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
   const [etaMs, setEtaMs] = useState<number | null>(null);
   const [mutating, setMutating] = useState<boolean>(false);
+  const [currentTimezoneTime, setCurrentTimezoneTime] = useState<string>('');
 
   const fetchCampaignStatus = useCallback(async () => {
     if (!campaignId) {
@@ -127,6 +128,39 @@ export const CampaignStatusPage: React.FC = () => {
       second: '2-digit',
     });
   };
+
+  const formatCurrentTimezoneTime = (timezone: string | null): string => {
+    if (!timezone) return 'N/A';
+    try {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+      return formatter.format(now);
+    } catch (e) {
+      return 'Invalid timezone';
+    }
+  };
+
+  // Update current time in campaign timezone every second
+  useEffect(() => {
+    if (!campaign?.timezone) {
+      setCurrentTimezoneTime('');
+      return;
+    }
+    
+    const updateTime = () => {
+      setCurrentTimezoneTime(formatCurrentTimezoneTime(campaign.timezone));
+    };
+    
+    updateTime(); // Update immediately
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [campaign?.timezone]);
 
   const getStatusBadge = (status: string): React.ReactNode => {
     const statusClasses: Record<string, string> = {
@@ -283,7 +317,7 @@ export const CampaignStatusPage: React.FC = () => {
       {/* Basic Status */}
       <div className="info-section">
         <h2>Campaign Status</h2>
-        <div className={`status-layout columns-3`}>
+        <div className={`status-layout columns-4`}>
           <div className="status-col">
             <div className="info-item">
               <label>Started:</label>
@@ -318,19 +352,47 @@ export const CampaignStatusPage: React.FC = () => {
             )}
           </div>
           <div className="status-col">
-            {campaign.status !== 'paused' && countdownMs !== null && countdownMs > 0 && (
-              <div className="info-item">
-                <label>Next Send In:</label>
-                <div>{formatHms(Math.max(0, countdownMs))}</div>
+            <div className="info-item">
+              <label>Next Send In:</label>
+              <div>
+                {campaign.status === 'paused' ? (
+                  <span>Paused</span>
+                ) : countdownMs !== null && countdownMs > 0 ? (
+                  formatHms(Math.max(0, countdownMs))
+                ) : (
+                  <span>N/A</span>
+                )}
               </div>
-            )}
-            {campaign.status !== 'paused' && etaMs !== null && (
-              <div className="info-item">
-                <label>ETA to finish:</label>
-                <div>{formatHms(Math.max(0, etaMs))}</div>
+            </div>
+            <div className="info-item">
+              <label>ETA to finish:</label>
+              <div>
+                {campaign.status === 'paused' ? (
+                  <span>Paused</span>
+                ) : etaMs !== null ? (
+                  formatHms(Math.max(0, etaMs))
+                ) : (
+                  <span>N/A</span>
+                )}
               </div>
-            )}
+            </div>
           </div>
+          {campaign.timezone && (
+            <div className="status-col">
+              <div className="info-item">
+                <label>Work Hours:</label>
+                <div>
+                  {campaign.work_start_hour !== undefined && campaign.work_end_hour !== undefined
+                    ? `${String(campaign.work_start_hour).padStart(2, '0')}:00 - ${String(campaign.work_end_hour).padStart(2, '0')}:00`
+                    : '09:00 - 18:00'}
+                </div>
+              </div>
+              <div className="info-item">
+                <label>Current Time ({campaign.timezone}):</label>
+                <div className="monospace">{currentTimezoneTime}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
