@@ -17,6 +17,7 @@ export interface CampaignSetupRequest {
 
   // Автовідповіді (умовне поле)
   auto_answering?: boolean;
+  single_reply_only?: boolean;
   reply_prompt?: string;
 
   // Стиль (необов'язково)

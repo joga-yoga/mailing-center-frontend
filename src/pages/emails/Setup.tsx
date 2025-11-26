@@ -24,6 +24,7 @@ export const EmailsSetupPage: React.FC = () => {
   const [recipientMode, setRecipientMode] = useState<'emails' | 'filters'>('emails');
   const [parsing, setParsing] = useState(false);
   const [autoAnswering, setAutoAnswering] = useState(false);
+  const [singleReplyOnly, setSingleReplyOnly] = useState(false);
   const [useCorporate, setUseCorporate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<CampaignSetupResponse | null>(null);
@@ -419,6 +420,7 @@ export const EmailsSetupPage: React.FC = () => {
       
       // Ensure auto_answering and parsing are included in form data
       data.auto_answering = autoAnswering;
+      data.single_reply_only = singleReplyOnly;
       data.parsing = parsing;
 
       // Convert emails from string to array
@@ -880,21 +882,36 @@ export const EmailsSetupPage: React.FC = () => {
               setValue('auto_answering', checked);
               if (!checked) {
                 setValue('reply_prompt', '');
+                setSingleReplyOnly(false);
+                setValue('single_reply_only', false);
               }
             }}
           />
 
           {autoAnswering && (
-            <TextareaField
-              label="Auto Response Prompt"
-              name="reply_prompt"
-              value={watch('reply_prompt') || ''}
-              onChange={(e) => setValue('reply_prompt', e.target.value)}
-              error={errors.reply_prompt?.message}
-              required
-              rows={4}
-              placeholder="Describe how to generate auto responses..."
-            />
+            <>
+              <ToggleField
+                label="Only one answer"
+                name="single_reply_only"
+                checked={singleReplyOnly}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setSingleReplyOnly(checked);
+                  setValue('single_reply_only', checked);
+                }}
+              />
+
+              <TextareaField
+                label="Auto Response Prompt"
+                name="reply_prompt"
+                value={watch('reply_prompt') || ''}
+                onChange={(e) => setValue('reply_prompt', e.target.value)}
+                error={errors.reply_prompt?.message}
+                required
+                rows={4}
+                placeholder="Describe how to generate auto responses..."
+              />
+            </>
           )}
         </div>
 
