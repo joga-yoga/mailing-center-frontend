@@ -323,6 +323,32 @@ export const EmailsSetupPage: React.FC = () => {
       .filter(email => email.length > 0);
   };
 
+  const filteredSenderAccounts = React.useMemo(
+    () => senderAccounts.filter((acc) => acc.server_id === (useCorporate ? '2' : '1')),
+    [senderAccounts, useCorporate]
+  );
+
+  const allSenderAccountsSelected =
+    filteredSenderAccounts.length > 0 &&
+    filteredSenderAccounts.every((acc) => selectedSenderIds.includes(acc.id));
+
+  const handleToggleAllSenderAccounts = (checked: boolean) => {
+    setSelectedSenderIds(checked ? filteredSenderAccounts.map((acc) => acc.id) : []);
+  };
+
+  const allObjectsSelected =
+    objects.length > 0 && objects.every((obj) => !!selectedObjects[obj.place_id]);
+
+  const handleToggleAllObjects = (checked: boolean) => {
+    setSelectedObjects((prev) => {
+      const next = { ...prev };
+      objects.forEach((obj) => {
+        next[obj.place_id] = checked;
+      });
+      return next;
+    });
+  };
+
   const handleFormSubmit = async (data: CampaignSetupRequest) => {
     // Validate form before showing confirmation
     let isValid = true;
@@ -350,8 +376,7 @@ export const EmailsSetupPage: React.FC = () => {
       validationErrors.push('Country and object type are required');
     }
 
-    const currentServerId = useCorporate ? '2' : '1';
-    const relevantAccounts = senderAccounts.filter((acc) => acc.server_id === currentServerId);
+    const relevantAccounts = filteredSenderAccounts;
     if (relevantAccounts.length === 0) {
       validationErrors.push(`No ${useCorporate ? 'corporate' : 'personal'} sender accounts available`);
       isValid = false;
@@ -754,6 +779,33 @@ export const EmailsSetupPage: React.FC = () => {
 
                   {objects.length > 0 && (
                     <div className="objects-box">
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderBottom: '1px solid #eee',
+                          fontWeight: 500,
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={allObjectsSelected}
+                            onChange={(e) => handleToggleAllObjects(e.target.checked)}
+                            style={{ width: '16px', height: '16px' }}
+                          />
+                          Select all objects
+                        </label>
+                      </div>
                       {objects.map((obj) => (
                         <div
                           key={obj.place_id}
@@ -1003,7 +1055,7 @@ export const EmailsSetupPage: React.FC = () => {
             )}
             {!senderAccountsLoading && !senderAccountsError && (
               <div>
-                {senderAccounts.filter((acc) => acc.server_id === (useCorporate ? '2' : '1')).length === 0 ? (
+                {filteredSenderAccounts.length === 0 ? (
                   <div style={{ color: '#dc3545', fontSize: '14px' }}>
                     No {useCorporate ? 'corporate' : 'personal'} sender accounts available. Add sender accounts first.
                   </div>
@@ -1019,9 +1071,26 @@ export const EmailsSetupPage: React.FC = () => {
                       gap: '8px',
                     }}
                   >
-                    {senderAccounts
-                      .filter((acc) => acc.server_id === (useCorporate ? '2' : '1'))
-                      .map((acc) => (
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        marginBottom: '4px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={allSenderAccountsSelected}
+                        onChange={(e) => handleToggleAllSenderAccounts(e.target.checked)}
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      Select all sender accounts
+                    </label>
+                    {filteredSenderAccounts.map((acc) => (
                         <label
                           key={acc.id}
                           style={{

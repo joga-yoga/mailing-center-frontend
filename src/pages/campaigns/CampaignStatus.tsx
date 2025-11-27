@@ -186,7 +186,7 @@ export const CampaignStatusPage: React.FC = () => {
     );
   };
 
-  const getEmailStatusBadge = (status: string | null): React.ReactNode => {
+  const getEmailStatusBadge = (status: string | null, repliesCount?: number): React.ReactNode => {
     const statusClasses: Record<string, string> = {
       queued: 'email-badge-queued',
       enriching: 'email-badge-enriching',
@@ -213,10 +213,14 @@ export const CampaignStatusPage: React.FC = () => {
 
     const cls = status ? statusClasses[status] || '' : '';
     const label = status ? (statusLabels[status] || status) : 'N/A';
+    const displayLabel =
+      status === 'replied' && typeof repliesCount === 'number' && repliesCount > 0
+        ? `${label} (${repliesCount})`
+        : label;
 
     return (
       <span className={`email-status-badge ${cls}`}>
-        {label}
+        {displayLabel}
       </span>
     );
   };
@@ -433,7 +437,7 @@ export const CampaignStatusPage: React.FC = () => {
                   <tr key={obj.place_id}>
                     <td title={obj.place_id || ''}>{obj.name || 'N/A'}</td>
                     <td className="monospace">{obj.email || 'N/A'}</td>
-                    <td>{getEmailStatusBadge(obj.email_status)}</td>
+                    <td>{getEmailStatusBadge(obj.email_status, obj.reply_count)}</td>
                     <td>{formatDateTime(obj.planned_send_at)}</td>
                     <td className="monospace">{obj.from_email || 'N/A'}</td>
                     <td>{formatDateTime(obj.sent_at)}</td>

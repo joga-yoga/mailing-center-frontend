@@ -158,6 +158,11 @@
   border-left: 4px solid #007bff;
 }
 
+.email-message.sent-email.has-error {
+  background: #fff5f5;
+  border-left: 4px solid #dc3545;
+}
+
 .email-message.reply-email {
   background: #fff3cd;
   border-left: 4px solid #ffc107;

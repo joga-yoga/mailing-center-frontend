@@ -13,6 +13,7 @@ interface ThreadMessage {
   created_at: string;
   in_reply_to: string | null;
   message_id: string | null;
+  error?: string | null;  // Помилка відправки авто-відповіді
 }
 
 interface PendingReply {
@@ -362,7 +363,7 @@ export const CampaignObjectDetailsPage: React.FC = () => {
                   {thread.messages.map((message, index) => (
                     <div 
                       key={message.id} 
-                      className={`email-message ${message.type === 'sent' ? 'sent-email' : 'reply-email'}`}
+                      className={`email-message ${message.type === 'sent' ? 'sent-email' : 'reply-email'} ${message.error ? 'has-error' : ''}`}
                     >
                       <div className="email-message-header">
                         <div className="email-sender">
@@ -373,6 +374,11 @@ export const CampaignObjectDetailsPage: React.FC = () => {
                           {message.type === 'sent' && data.sent_email?.id.startsWith('generated_') && data.target.status !== 'sent' && (
                             <div className="email-status-badge email-generated">
                               Generated (Not Sent)
+                            </div>
+                          )}
+                          {message.error && (
+                            <div className="email-status-badge" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
+                              Failed
                             </div>
                           )}
                           <span className="email-message-id">#{message.id.slice(-8)}</span>
@@ -386,7 +392,12 @@ export const CampaignObjectDetailsPage: React.FC = () => {
                           <pre>{message.body}</pre>
                         </div>
                       </div>
-                      {message.type === 'sent' && data.sent_email?.error && (
+                      {message.error && (
+                        <div className="email-error">
+                          <strong>Помилка відправки:</strong> {message.error}
+                        </div>
+                      )}
+                      {message.type === 'sent' && data.sent_email?.error && !message.error && (
                         <div className="email-error">
                           <strong>Error:</strong> {data.sent_email.error}
                         </div>

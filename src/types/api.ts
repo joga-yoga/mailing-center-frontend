@@ -98,5 +98,6 @@ export interface CampaignStatusResponse {
     from_email: string | null;  // Sender email address
     error: string | null;
     generation_error: string | null;
+    reply_count?: number;
   }>;
 }
