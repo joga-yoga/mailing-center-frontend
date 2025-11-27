@@ -203,16 +203,14 @@ export const CampaignsListPage: React.FC = () => {
                       >
                         Show more
                       </Link>
-                      {campaign.status === 'completed' && (
-                        <button
-                          type="button"
-                          className="delete-btn"
-                          onClick={() => openDeleteModal(campaign)}
-                          disabled={deletingId === campaign.campaign_id}
-                        >
-                          {deletingId === campaign.campaign_id ? 'Deleting...' : 'Delete'}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="delete-btn"
+                        onClick={() => openDeleteModal(campaign)}
+                        disabled={deletingId === campaign.campaign_id}
+                      >
+                        {deletingId === campaign.campaign_id ? 'Deleting...' : 'Delete'}
+                      </button>
                     </div>
                   </td>
                 </tr>
