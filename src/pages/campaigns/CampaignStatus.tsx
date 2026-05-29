@@ -191,6 +191,7 @@ export const CampaignStatusPage: React.FC = () => {
       queued: 'email-badge-queued',
       enriching: 'email-badge-enriching',
       generated: 'email-badge-generated',
+      needs_review: 'email-badge-generated',
       scheduled: 'email-badge-scheduled',
       sending: 'email-badge-sending',
       sent: 'email-badge-sent',
@@ -203,6 +204,7 @@ export const CampaignStatusPage: React.FC = () => {
       queued: 'Queued',
       enriching: 'Enriching',
       generated: 'Generated',
+      needs_review: 'Needs Review',
       scheduled: 'Scheduled',
       sending: 'Sending',
       sent: 'Sent',
@@ -531,6 +533,18 @@ export const CampaignStatusPage: React.FC = () => {
                   <label>Corporate Domain:</label>
                   <div>{campaign.use_corporate ? '✅ Enabled' : '❌ Disabled'}</div>
                 </div>
+                <div className="info-item full-width">
+                  <label>Mailer Agent:</label>
+                  <div>{campaign.mailer_agent_mode || 'legacy_assistant'}</div>
+                </div>
+                <div className="info-item full-width">
+                  <label>Agent Draft Mode:</label>
+                  <div>{campaign.mailer_agent_draft_mode || 'draft_only'}</div>
+                </div>
+                <div className="info-item full-width">
+                  <label>Agent Website Context:</label>
+                  <div>{campaign.mailer_agent_website_context_enabled ? 'Enabled' : 'Disabled'}</div>
+                </div>
                 {campaign.daily_limit !== null && campaign.daily_limit !== undefined && (
                   <div className="info-item">
                     <label>Daily Limit:</label>
@@ -599,10 +613,49 @@ export const CampaignStatusPage: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {campaign.mailer_agent_config && (
+              <div className="details-subsection">
+                <h3>Mailer Agent Content Direction</h3>
+                <div className="prompts-grid">
+                  {campaign.mailer_agent_config.company_context && (
+                    <div className="prompt-item">
+                      <label>Company / Platform:</label>
+                      <div className="prompt-text">{campaign.mailer_agent_config.company_context}</div>
+                    </div>
+                  )}
+                  {campaign.mailer_agent_config.offer_context && (
+                    <div className="prompt-item">
+                      <label>Offer:</label>
+                      <div className="prompt-text">{campaign.mailer_agent_config.offer_context}</div>
+                    </div>
+                  )}
+                  {campaign.mailer_agent_config.first_contact_instruction && (
+                    <div className="prompt-item">
+                      <label>First Contact:</label>
+                      <div className="prompt-text">{campaign.mailer_agent_config.first_contact_instruction}</div>
+                    </div>
+                  )}
+                  {campaign.mailer_agent_config.reply_instruction && (
+                    <div className="prompt-item">
+                      <label>Replies:</label>
+                      <div className="prompt-text">{campaign.mailer_agent_config.reply_instruction}</div>
+                    </div>
+                  )}
+                  <div className="prompt-item">
+                    <label>Profile:</label>
+                    <div className="prompt-text">
+                      Personalization: {campaign.mailer_agent_config.personalization_level || 'medium'} |
+                      Max body: {campaign.mailer_agent_config.max_body_chars || 1200} |
+                      Max subject: {campaign.mailer_agent_config.max_subject_chars || 120}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 };
-

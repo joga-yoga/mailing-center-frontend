@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
   b2bImport: '/api/b2b/import',
   senderAccounts: '/api/sender-accounts',
   mailApiUrls: '/api/mail-api-urls',
+  agentDefaultSettings: '/api/agent/default-settings',
   b2bCount: (country: string, objectType: string) => {
     const params = new URLSearchParams({
       country,
@@ -40,4 +41,3 @@ export const API_ENDPOINTS = {
 export const buildApiUrl = (endpoint: string): string => {
   return `${API_BASE_URL}${endpoint}`;
 };
-
