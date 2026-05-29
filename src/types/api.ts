@@ -1,3 +1,23 @@
+export interface MailerAgentConfig {
+  global_style_instruction?: string | null;
+  first_contact_instruction?: string | null;
+  reply_instruction?: string | null;
+  quality_review_instruction?: string | null;
+  company_context?: string | null;
+  offer_context?: string | null;
+  target_audience?: string | null;
+  cta_instruction?: string | null;
+  forbidden_phrases?: string[];
+  required_points?: string[];
+  personalization_level?: 'low' | 'medium' | 'high';
+  max_body_chars?: number;
+  max_subject_chars?: number;
+  default_language?: string | null;
+  generation_model?: string | null;
+  classifier_model?: string | null;
+  reviewer_model?: string | null;
+}
+
 export interface CampaignSetupRequest {
   name?: string;
   sender_account_ids?: string[];
@@ -29,6 +49,12 @@ export interface CampaignSetupRequest {
   use_corporate?: boolean;
   daily_limit?: number;
   timezone?: string;
+
+  // Mailer Agent
+  mailer_agent_mode?: 'legacy_assistant' | 'responses' | 'disabled';
+  mailer_agent_draft_mode?: 'draft_only' | 'trusted_auto';
+  mailer_agent_website_context_enabled?: boolean;
+  mailer_agent_config?: MailerAgentConfig;
 }
 
 export interface CampaignSetupResponse {
@@ -57,6 +83,10 @@ export interface CampaignStatusResponse {
   parsing: boolean;
   auto_answering: boolean;
   use_corporate: boolean;
+  mailer_agent_mode?: string | null;
+  mailer_agent_draft_mode?: string | null;
+  mailer_agent_website_context_enabled?: boolean | null;
+  mailer_agent_config?: MailerAgentConfig | null;
   
   // Prompts
   subject_prompt: string | null;
@@ -92,7 +122,7 @@ export interface CampaignStatusResponse {
     name: string | null;
     type: string | null;
     email: string | null;
-    email_status: "queued" | "enriching" | "generated" | "scheduled" | "sending" | "sent" | "failed" | "replied" | "bounced" | null;
+    email_status: "queued" | "enriching" | "generated" | "needs_review" | "scheduled" | "sending" | "sent" | "failed" | "replied" | "bounced" | null;
     planned_send_at: string | null;  // ISO datetime
     sent_at: string | null;  // ISO datetime
     from_email: string | null;  // Sender email address

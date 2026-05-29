@@ -147,6 +147,15 @@ code {
   border: 1px solid #f5c6cb;
 }
 
+.warning-alert {
+  background-color: #fff3cd;
+  color: #664d03;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #ffecb5;
+}
+
 .confirmation-dialog {
   position: fixed;
   top: 0;

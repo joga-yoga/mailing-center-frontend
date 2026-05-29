@@ -7,7 +7,7 @@ import { CountrySelect } from '../../components/CountrySelect';
 import { ObjectTypeSelect } from '../../components/ObjectTypeSelect';
 import { TovSelect } from '../../components/TovSelect';
 import { WritingStyleSelect } from '../../components/WritingStyleSelect';
-import { CampaignSetupRequest, CampaignSetupResponse } from '../../types/api';
+import { CampaignSetupRequest, CampaignSetupResponse, MailerAgentConfig } from '../../types/api';
 import { buildApiUrl, API_ENDPOINTS } from '../../config/api';
 
 type SenderAccountOption = {
@@ -47,6 +47,14 @@ export const EmailsSetupPage: React.FC = () => {
   const [availableTimezones, setAvailableTimezones] = useState<string[]>([]);
   const [timezonesLoading, setTimezonesLoading] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>('');
+  const [mailerAgentMode, setMailerAgentMode] = useState<CampaignSetupRequest['mailer_agent_mode']>('legacy_assistant');
+  const [mailerAgentDraftMode, setMailerAgentDraftMode] = useState<CampaignSetupRequest['mailer_agent_draft_mode']>('draft_only');
+  const [mailerAgentWebsiteContextEnabled, setMailerAgentWebsiteContextEnabled] = useState(true);
+  const [mailerAgentConfig, setMailerAgentConfig] = useState<MailerAgentConfig>({
+    personalization_level: 'medium',
+    max_body_chars: 1200,
+    max_subject_chars: 120,
+  });
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, setError, clearErrors } = useForm<CampaignSetupRequest>({});
 
@@ -55,6 +63,48 @@ export const EmailsSetupPage: React.FC = () => {
   const watchedObjectType = watch('object_type');
   const watchedParsingPrompt = watch('parsing_prompt');
   const watchedReplyPrompt = watch('reply_prompt');
+
+  const updateMailerAgentConfig = <K extends keyof MailerAgentConfig>(
+    key: K,
+    value: MailerAgentConfig[K]
+  ) => {
+    setMailerAgentConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const textToList = (value?: string | null): string[] => {
+    return (value || '')
+      .split('\n')
+      .map(item => item.trim())
+      .filter(Boolean);
+  };
+
+  const listToText = (items?: string[]): string => (items || []).join('\n');
+
+  React.useEffect(() => {
+    const fetchAgentDefaults = async () => {
+      try {
+        const response = await fetch(buildApiUrl(API_ENDPOINTS.agentDefaultSettings));
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        setMailerAgentMode(data.mailer_agent_mode || 'legacy_assistant');
+        setMailerAgentDraftMode(data.mailer_agent_draft_mode || 'draft_only');
+        setMailerAgentWebsiteContextEnabled(data.mailer_agent_website_context_enabled ?? true);
+        setMailerAgentConfig(prev => ({
+          ...prev,
+          ...(data.mailer_agent_config || {}),
+          personalization_level: data.mailer_agent_config?.personalization_level || prev.personalization_level || 'medium',
+          max_body_chars: data.mailer_agent_config?.max_body_chars || prev.max_body_chars || 1200,
+          max_subject_chars: data.mailer_agent_config?.max_subject_chars || prev.max_subject_chars || 120,
+        }));
+      } catch {
+        // Defaults are optional; backend will still apply safe fallbacks.
+      }
+    };
+
+    fetchAgentDefaults();
+  }, []);
   React.useEffect(() => {
     const fetchSenderAccounts = async () => {
       setSenderAccountsLoading(true);
@@ -423,6 +473,22 @@ export const EmailsSetupPage: React.FC = () => {
       validationErrors.push('Reply prompt is required when auto-answering is enabled');
     }
 
+    if (mailerAgentMode === 'responses') {
+      if (!mailerAgentConfig.first_contact_instruction?.trim()) {
+        isValid = false;
+        validationErrors.push('Mailer Agent first contact instructions are required in Responses mode');
+      }
+      if (!mailerAgentConfig.company_context?.trim() && !mailerAgentConfig.offer_context?.trim()) {
+        isValid = false;
+        validationErrors.push('Mailer Agent needs company/platform context or offer context in Responses mode');
+      }
+      const maxBody = Number(mailerAgentConfig.max_body_chars || 0);
+      if (maxBody < 300 || maxBody > 2000) {
+        isValid = false;
+        validationErrors.push('Mailer Agent max body length must be between 300 and 2000 characters');
+      }
+    }
+
     if (isValid) {
       setSubmitError(''); // Clear any previous errors
       setShowConfirmation(true);
@@ -499,13 +565,25 @@ export const EmailsSetupPage: React.FC = () => {
       }
 
       data.sender_account_ids = selectedSenderIds;
+      data.mailer_agent_mode = mailerAgentMode;
+      data.mailer_agent_draft_mode = mailerAgentDraftMode;
+      data.mailer_agent_website_context_enabled = mailerAgentWebsiteContextEnabled;
+      data.mailer_agent_config = {
+        ...mailerAgentConfig,
+        forbidden_phrases: mailerAgentConfig.forbidden_phrases || [],
+        required_points: mailerAgentConfig.required_points || [],
+        max_body_chars: Number(mailerAgentConfig.max_body_chars || 1200),
+        max_subject_chars: Number(mailerAgentConfig.max_subject_chars || 120),
+      };
 
       // Debug logging
       console.log('Sending campaign data:', {
         ...data,
         auto_answering: data.auto_answering,
         parsing: data.parsing,
-        use_corporate: data.use_corporate
+        use_corporate: data.use_corporate,
+        mailer_agent_mode: data.mailer_agent_mode,
+        mailer_agent_draft_mode: data.mailer_agent_draft_mode,
       });
 
       const response = await fetch(buildApiUrl(API_ENDPOINTS.emailsSetup), {
@@ -967,6 +1045,206 @@ export const EmailsSetupPage: React.FC = () => {
           )}
         </div>
 
+        {/* Mailer Agent */}
+        <div className="form-section">
+          <h3>Mailer Agent</h3>
+
+          <div className="form-group">
+            <label htmlFor="mailer_agent_mode">Generation Engine</label>
+            <select
+              id="mailer_agent_mode"
+              className="form-control"
+              value={mailerAgentMode || 'legacy_assistant'}
+              onChange={(e) => setMailerAgentMode(e.target.value as CampaignSetupRequest['mailer_agent_mode'])}
+            >
+              <option value="responses">Responses Agent</option>
+              <option value="legacy_assistant">Legacy Assistant</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+
+          <ToggleField
+            label="Save generated emails as drafts"
+            name="mailer_agent_draft_only"
+            checked={mailerAgentDraftMode !== 'trusted_auto'}
+            onChange={(e) => {
+              setMailerAgentDraftMode(e.target.checked ? 'draft_only' : 'trusted_auto');
+            }}
+            hint="Draft mode is safer. Turning this off approves agent drafts into the existing sending flow."
+          />
+
+          <ToggleField
+            label="Use website context"
+            name="mailer_agent_website_context_enabled"
+            checked={mailerAgentWebsiteContextEnabled}
+            onChange={(e) => setMailerAgentWebsiteContextEnabled(e.target.checked)}
+            hint="Mailer Agent will fetch recipient websites on demand when a website URL is available."
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }}>
+            <div className="form-group">
+              <label htmlFor="generation_model">Generation Model</label>
+              <input
+                id="generation_model"
+                type="text"
+                className="form-control"
+                value={mailerAgentConfig.generation_model || ''}
+                onChange={(e) => updateMailerAgentConfig('generation_model', e.target.value)}
+                placeholder="gpt-5.4-mini"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="classifier_model">Classifier Model</label>
+              <input
+                id="classifier_model"
+                type="text"
+                className="form-control"
+                value={mailerAgentConfig.classifier_model || ''}
+                onChange={(e) => updateMailerAgentConfig('classifier_model', e.target.value)}
+                placeholder="gpt-5.4-nano"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="reviewer_model">Reviewer Model</label>
+              <input
+                id="reviewer_model"
+                type="text"
+                className="form-control"
+                value={mailerAgentConfig.reviewer_model || ''}
+                onChange={(e) => updateMailerAgentConfig('reviewer_model', e.target.value)}
+                placeholder="gpt-5.4-nano"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Content Direction */}
+        <div className="form-section">
+          <h3>Content Direction</h3>
+
+          <TextareaField
+            label="Company / Platform Context"
+            name="company_context"
+            value={mailerAgentConfig.company_context || ''}
+            onChange={(e) => updateMailerAgentConfig('company_context', e.target.value)}
+            rows={4}
+            placeholder="What the platform/company does, why recipients may care..."
+          />
+
+          <TextareaField
+            label="Offer Context"
+            name="offer_context"
+            value={mailerAgentConfig.offer_context || ''}
+            onChange={(e) => updateMailerAgentConfig('offer_context', e.target.value)}
+            rows={4}
+            placeholder="What exactly should be offered or suggested..."
+          />
+
+          <TextareaField
+            label="Target Audience"
+            name="target_audience"
+            value={mailerAgentConfig.target_audience || ''}
+            onChange={(e) => updateMailerAgentConfig('target_audience', e.target.value)}
+            rows={3}
+            placeholder="Who these recipients are and what matters to them..."
+          />
+
+          <TextareaField
+            label="First Contact Instructions"
+            name="first_contact_instruction"
+            value={mailerAgentConfig.first_contact_instruction || ''}
+            onChange={(e) => updateMailerAgentConfig('first_contact_instruction', e.target.value)}
+            required={mailerAgentMode === 'responses'}
+            rows={4}
+            placeholder="How first-contact emails should be written..."
+          />
+
+          <TextareaField
+            label="Reply Instructions"
+            name="reply_instruction"
+            value={mailerAgentConfig.reply_instruction || ''}
+            onChange={(e) => updateMailerAgentConfig('reply_instruction', e.target.value)}
+            rows={4}
+            placeholder="How the agent should answer inbound replies..."
+          />
+
+          <TextareaField
+            label="CTA Instruction"
+            name="cta_instruction"
+            value={mailerAgentConfig.cta_instruction || ''}
+            onChange={(e) => updateMailerAgentConfig('cta_instruction', e.target.value)}
+            rows={2}
+            placeholder="What one soft call to action should be used..."
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }}>
+            <div className="form-group">
+              <label htmlFor="personalization_level">Personalization Level</label>
+              <select
+                id="personalization_level"
+                className="form-control"
+                value={mailerAgentConfig.personalization_level || 'medium'}
+                onChange={(e) => updateMailerAgentConfig('personalization_level', e.target.value as MailerAgentConfig['personalization_level'])}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="max_body_chars">Max Body Length</label>
+              <input
+                id="max_body_chars"
+                type="number"
+                min={300}
+                max={2000}
+                className="form-control"
+                value={mailerAgentConfig.max_body_chars || 1200}
+                onChange={(e) => updateMailerAgentConfig('max_body_chars', Number(e.target.value))}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="max_subject_chars">Max Subject Length</label>
+              <input
+                id="max_subject_chars"
+                type="number"
+                min={40}
+                max={180}
+                className="form-control"
+                value={mailerAgentConfig.max_subject_chars || 120}
+                onChange={(e) => updateMailerAgentConfig('max_subject_chars', Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <TextareaField
+            label="Required Points"
+            name="required_points"
+            value={listToText(mailerAgentConfig.required_points)}
+            onChange={(e) => updateMailerAgentConfig('required_points', textToList(e.target.value))}
+            rows={3}
+            placeholder="One required point per line..."
+          />
+
+          <TextareaField
+            label="Forbidden Phrases"
+            name="forbidden_phrases"
+            value={listToText(mailerAgentConfig.forbidden_phrases)}
+            onChange={(e) => updateMailerAgentConfig('forbidden_phrases', textToList(e.target.value))}
+            rows={3}
+            placeholder="One forbidden phrase per line..."
+          />
+
+          <TextareaField
+            label="Quality Review Instructions"
+            name="quality_review_instruction"
+            value={mailerAgentConfig.quality_review_instruction || ''}
+            onChange={(e) => updateMailerAgentConfig('quality_review_instruction', e.target.value)}
+            rows={3}
+            placeholder="Extra quality checks the reviewer should apply..."
+          />
+        </div>
+
         {/* Communication Style */}
         <div className="form-section">
           <h3>Communication Style</h3>
@@ -1149,6 +1427,11 @@ export const EmailsSetupPage: React.FC = () => {
             <div className="confirmation-content">
               <h3>Confirm Campaign Creation</h3>
               <p>Are you sure you want to create this email campaign with the current settings?</p>
+              {mailerAgentMode === 'responses' && mailerAgentDraftMode === 'trusted_auto' && (
+                <div className="warning-alert">
+                  <strong>Trusted auto mode:</strong> Mailer Agent drafts will be approved into the sending flow automatically.
+                </div>
+              )}
               <div className="confirmation-buttons">
                 <button
                   type="button"
