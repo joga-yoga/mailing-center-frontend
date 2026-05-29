@@ -223,7 +223,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
     uniqueByCode.sort((a, b) => a.name.localeCompare(b.name));
 
     setFilteredCountries(uniqueByCode);
-  }, [searchTerm, allowedCountryNames]);
+  }, [searchTerm, allowedCountryNames, selectedCountry]);
 
   // Initialize filtered countries on mount
   useEffect(() => {

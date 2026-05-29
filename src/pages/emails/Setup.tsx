@@ -740,50 +740,47 @@ export const EmailsSetupPage: React.FC = () => {
                             Select Timezone:
                           </label>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {availableTimezones.map((tzFormatted) => {
-                              const tzName = extractTimezoneName(tzFormatted);
-                              return (
-                                <label
-                                  key={tzFormatted}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    fontSize: '14px',
-                                    cursor: 'pointer',
-                                    padding: '6px 8px',
-                                    borderRadius: '4px',
-                                    backgroundColor: selectedTimezone === tzFormatted ? '#e7f3ff' : 'transparent',
-                                    transition: 'background-color 0.2s',
+                            {availableTimezones.map((tzFormatted) => (
+                              <label
+                                key={tzFormatted}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  fontSize: '14px',
+                                  cursor: 'pointer',
+                                  padding: '6px 8px',
+                                  borderRadius: '4px',
+                                  backgroundColor: selectedTimezone === tzFormatted ? '#e7f3ff' : 'transparent',
+                                  transition: 'background-color 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (selectedTimezone !== tzFormatted) {
+                                    e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (selectedTimezone !== tzFormatted) {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }
+                                }}
+                              >
+                                <input
+                                  type="radio"
+                                  name="timezone-select"
+                                  value={tzFormatted}
+                                  checked={selectedTimezone === tzFormatted}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    const tzNameValue = extractTimezoneName(value);
+                                    setSelectedTimezone(value); // Display formatted
+                                    setValue('timezone', tzNameValue); // Save only name
                                   }}
-                                  onMouseEnter={(e) => {
-                                    if (selectedTimezone !== tzFormatted) {
-                                      e.currentTarget.style.backgroundColor = '#f8f9fa';
-                                    }
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    if (selectedTimezone !== tzFormatted) {
-                                      e.currentTarget.style.backgroundColor = 'transparent';
-                                    }
-                                  }}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="timezone-select"
-                                    value={tzFormatted}
-                                    checked={selectedTimezone === tzFormatted}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      const tzNameValue = extractTimezoneName(value);
-                                      setSelectedTimezone(value); // Display formatted
-                                      setValue('timezone', tzNameValue); // Save only name
-                                    }}
-                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                  />
-                                  <span>{tzFormatted}</span>
-                                </label>
-                              );
-                            })}
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                                <span>{tzFormatted}</span>
+                              </label>
+                            ))}
                           </div>
                         </div>
                       )}
