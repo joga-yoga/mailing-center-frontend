@@ -4,10 +4,10 @@
 // Example: REACT_APP_API_BASE_URL=https://api.aipisarz.pl
 export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://127.0.0.1:8001' 
+    ? 'http://127.0.0.1:8000' 
     : window.location.hostname === 'aipisarz.pl'
     ? 'https://api.aipisarz.pl'
-    : `${window.location.protocol}//${window.location.hostname}:8001`);
+    : `${window.location.protocol}//${window.location.hostname}:8000`);
 
 // API endpoints
 export const API_ENDPOINTS = {
